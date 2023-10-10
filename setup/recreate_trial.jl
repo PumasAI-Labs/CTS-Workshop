@@ -257,5 +257,5 @@ filter!(df -> !(df.evid == 0 && all(ismissing, df[Cols(:dv, :sdma, :plt)])), myd
 # a word of warning about using .jls and serialization
 @chain mydf begin
     select(:id, :evid, :time, :amt, :cmt, :dv, :sdma, :plt, :tdd, :freqn)
-    serialize("trial_data.jls", _)
+    serialize("data/trial_data.jls", _)
 end
