@@ -20,6 +20,7 @@ BLREF = (
     EFF_TARGET_OFFSET = 0, # % reduction in efficacy target (0 = none); makes multiple dose increases more difficult 
     RECHECK_SCHED = 7, # days between scheduled evaluations of PLT
     INIT_REG = (AMT = 4.0, TIME = 0, II = 24, ADDL = 6), # initial regimen given to all patients; ADDL = 6 (daily dosing, weekly observations)
+    COVARIATES = Symbol[], # vector of symbols for cols containing cov values, empty because no covariates
 );
 
 # include cycle day 7 evaluation

@@ -37,9 +37,10 @@ end
 
 
 function create_covariate_dict(dfr)
-    # vector of covariate symbols
-    covariates = [:tdd, :freqn]
     
+    # vector of expected covariates symbols
+    covariates = dfr.scenario.COVARIATES
+
     # can't use select b/c no method for select(dataframerow)
     # can't use Dict(pairs(eachcol(dfr))) b/c no method for dataframerow 
     # can't use Dict(pairs(dfr[cov])) b/c values won't be vectors which breaks expand_covariates
@@ -48,11 +49,14 @@ function create_covariate_dict(dfr)
     cov_dict = Dict()
 
     # add values as vectors by looping over cov
-    for cov in covariates
-        cov_dict[cov] = [dfr[cov]]
+    if length(covariates) > 0
+        for cov in covariates
+            cov_dict[cov] = [dfr[cov]]
+        end
     end
 
     return cov_dict
+
 end
 
 
@@ -63,14 +67,21 @@ function expand_covariates(pt, regimen)
     nreps = length(regimen.data) # using this b/c of potential single evid=2 events 
 
     # !for-loop only works if v is a vector; can't change the type of element once the dict is created
-    for (k,v) in cov_dict
-        cov_dict[k] = repeat(v, nreps)
+    if length(cov_dict) > 0
+        for (k,v) in cov_dict
+            cov_dict[k] = repeat(v, nreps)
+        end
     end
+
+    # calculate total daily dose (tdd) based on amt and ii
+    amts = [x.amt/1000 for x in regimen.data];
+    freqn = [x.ii for x in regimen.data];
+    tdd = amts .* (24 ./ freqn)
+
 
     # * leaving this in case need ref for adding a time-varying cov like lnzdose
     #//cov_ntp = (; cov_dict..., lnzdose = pt["lnzdose"]) 
-    cov_ntp = (; cov_dict...)
-
+    cov_ntp = (; cov_dict..., tdd, freqn)
 
     return cov_ntp
     
