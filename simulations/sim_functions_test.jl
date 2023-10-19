@@ -100,7 +100,7 @@ testpatient["covariates"]
 ##################################################################
 # sim_profile & get_current_pd
 ##################################################################
-#* This block is working, but slows down the debugger; uncomment to run if change simp_rofile
+#* This block is working, but slows down the debugger; uncomment to run if change sim_profile
 #=
 reg = reset_regimen();
 testpt = reset_patient();

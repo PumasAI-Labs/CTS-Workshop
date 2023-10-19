@@ -23,9 +23,9 @@ function sim_profile(pt, regimen)
     # sim pk/pd for trial_day=1 through current trial_day
     # all obs are effectively "pre-dose" samples for q24h dosing
     sim = simobs(
-        pt["models"].integrated.mdl,
+        pt["models"].combined_pkpd.mdl,
         subj,
-        init_params(pt["models"].integrated.mdl),
+        init_params(pt["models"].combined_pkpd.mdl),
         obstimes = collect(1:1:pt["trial_day"]) .* 24,
         rng = rng
     )
@@ -483,7 +483,9 @@ function sim_trial(dfr, ncycles)
 end
 
 
-
+##################################################################
+# FOR VALIDATION USE ONLY!
+##################################################################
 function sim_trial_validation(pt, ncycles)
     #* INPUTS MODIFIED FOR VALIDATION PURPOSES
     #* DO NOT USE FOR REGULAR SIMULATION
