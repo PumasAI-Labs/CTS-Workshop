@@ -7,7 +7,7 @@ using DataFramesMeta, Serialization, StableRNGs, Random
 ##################################################################
 #* Define Scenarios
 ##################################################################
-# baseline reference 
+# baseline reference; 6 mg PO q24h with dose adjustment based on safety/efficacy
 BLREF = (
     NO_DOSE_ADJ = false, # disable dose adjustment logic and simulate all cycles at 1 dose
     SKIP_CDAY7 = true, # skip "visit" on cycle day 7
@@ -19,12 +19,24 @@ BLREF = (
     EFF_TARGET = 78, # efficacy target; default is 78% reduction in SDMA from baseline
     EFF_TARGET_OFFSET = 0, # % reduction in efficacy target (0 = none); makes multiple dose increases more difficult 
     RECHECK_SCHED = 7, # days between scheduled evaluations of PLT
-    INIT_REG = (AMT = 4.0, TIME = 0, II = 24, ADDL = 6), # initial regimen given to all patients; ADDL = 6 (daily dosing, weekly observations)
+    INIT_REG = (AMT = 6.0, TIME = 0, II = 24, ADDL = 6), # initial regimen given to all patients; ADDL = 6 (daily dosing, weekly observations)
     COVARIATES = Symbol[], # vector of symbols for cols containing cov values, empty because no covariates
 );
 
-# include cycle day 7 evaluation
-CDAY7 = (; BLREF..., SKIP_CDAY7 = false);
+# Early safety evaluation with immediate dose adjustment for G2 AE
+EARLY6MG = (; BLREF..., SKIP_CDAY7 = false);
+
+# Lower starting dose (4 mg PO q24h) with dose adjustment based on safety/efficacy
+ADJ4MG = (; BLREF..., INIT_REG = (AMT = 4.0, TIME = 0, II = 24, ADDL = 6));
+
+# published example, 4 mg PO q24h without opportunity for dose adjustment
+NOADJ4MG = (; BLREF..., NO_DOSE_ADJ = true, INIT_REG = (AMT = 4.0, TIME = 0, II = 24, ADDL = 6));
+
+# published example, 6 mg PO q24h without opportunity for dose adjustment
+NOADJ6MG = (; BLREF..., NO_DOSE_ADJ = true, INIT_REG = (AMT = 6.0, TIME = 0, II = 24, ADDL = 6));
+
+# published example, 8 mg PO q24h without opportunity for dose adjustment
+NOADJ8MG = (; BLREF..., NO_DOSE_ADJ = true, INIT_REG = (AMT = 8.0, TIME = 0, II = 24, ADDL = 6));
 
 ##################################################################
 #* Import Model(s)
@@ -48,8 +60,6 @@ single_pt_df = DataFrame(id = 1);
 # dataframe must contain models, scenario, and baseline covariates
 single_pt_df[!, :models] .= Ref((; combined_pkpd)); #* Need Ref to prevent DataFrames.jl from expanding the ntp
 single_pt_df[!, :scenario] .= Ref(BLREF); #* same reason as above
-single_pt_df[!, :tdd] .= 4.0; # FIXME: need to pull this from init_reg and update accordingly
-single_pt_df[!, :freqn] .= 24; # FIXME: need to pull this from init_reg and update even though it's fixed to q24h
 
 # sim 3 cycles for a single patient
 single_pt = sim_trial(single_pt_df[1,:], 3);
@@ -72,54 +82,42 @@ single_pt["profile"] |> DataFrame
 # way more columns than we need, but let's see what's available
 single_pt["profile"] |> DataFrame |> vscodedisplay
 
-##################################################################
-# Single Scenario (N=200)
-##################################################################
-
-# dataframe of N ids that will sim inputs and results
-mysims = DataFrame(id = 1:200);
-
-# dataframe must contain model(s), scenario, and baseline covariates
-mysims[!, :models] .= Ref((; combined_pkpd)); #* Need Ref to prevent DataFrames.jl from expanding the ntp
-mysims[!, :scenario] .= Ref(BLREF); #* same reason as above
-mysims[!, :tdd] .= 4.0; # FIXME: need to pull this from init_reg and update accordingly
-mysims[!, :freqn] .= 24; # FIXME: need to pull this from init_reg and update even though it's fixed to q24h
-
-# sim 3 cycles for N patients 
-mysims[!, :sims] = map(eachrow(mysims)) do r
-    sim_trial(r, 3)
-end
 
 ##################################################################
-# Multiple Scenarios (N=200)
+# Multiple Scenarios (N=500)
 ##################################################################
 # empty dataframe to sim info and results
-mysims_multi = DataFrame()
+mysims = DataFrame()
 
 # tags that can used to identify each run later if desired
 tags = [
-    "blref_nocov",
-    "cday7_nocov"
+    "adj_3c_cd1528_6mg",
+    "adj_3c_cd71528_6mg",
+    "adj_3c_cd1528_4mg",
+    "noadj_3c_4mg",
+    "noadj_3c_6mg",
+    "noadj_3c_8mg",
 ];
 
 # add required columns to df
-mysims_multi[!, :runid] = 1:length(tags);
-mysims_multi[!, :tags] .= tags;
-mysims_multi[!, :models] .= Ref((; combined_pkpd));
-mysims_multi[!, :scenario] .= [BLREF, CDAY7];
+mysims[!, :runid] = 1:length(tags);
+mysims[!, :tags] .= tags;
+mysims[!, :models] .= Ref((; combined_pkpd));
+mysims[!, :scenarios] .= [BLREF,EARLY6MG,ADJ4MG,NOADJ4MG,NOADJ6MG,NOADJ8MG];
 
 # each row contains a df of N patients that will be used as input
 # models and scenario get added to each row of the patients df in the map below
 # TODO: if time allows, use actual patient population with covariates and include import method
-mysims_multi[!, :patients] = map(eachrow(mysims_multi)) do r
-    df = DataFrame(id = collect(1:200) .+ 10000)
+mysims[!, :patients] = map(eachrow(mysims)) do r
+    df = DataFrame(id = collect(1:5000) .+ 10000)
     df[!, :models] .= Ref(r.models)
     df[!, :scenario] .= Ref(r.scenario)
     return df
 end;
 
-mysims_multi[!, :sims] = map(eachrow(mysims_multi)) do r
+#* perform simulations
+mysims[!, :sims] = map(eachrow(mysims)) do r
     map(eachrow(r.patients)) do subr
-        return sim_trial(subr, 3)
+        return sim_trial(subr, 3);
     end
-end
+end;

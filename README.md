@@ -79,9 +79,10 @@
 For each simulation in the manuscript, all subjects were given the same dose of PF06 without an opportunity to modify their dose based upon either PD response. It's possible that allowing for dose modification could increase the probability of target attainment while further minimizing the risk of serious adverse events. Realistically, it's a little early in the drug's development cycle to consider these questions, but they provide an excellent justification for performing a more advanced simulation.
 
 ## Key Questions
-1. Can the results of the original simulation (specifically 4-8mg PO q24h) be reproduced in Pumas?
-2. Would starting all patients at the lower end of the simulated range (4mg) and allowing for dose modification based upon PD response further improve both safety and efficacy metrics?
-3. The first follow-up for the original simulations was at cycle day 15. Would an earlier follow-up at cycle day 7 with the potential to taper the starting dose prevent subjects from experiencing more severe AEs?
+1. What are the predicted outcomes (safety, efficacy) for 4-8mg PO q24h regimens without dose adjustment?
+2. Can the predicted benefit/risk profile be improved by starting at 6 mg PO q24h while allowing for dose adjustment based upon outcomes?
+3. Would a lower starting dose (4 mg PO q24h) in combination with dose adjustment further alter the predicted benefit/risk profile?
+4. Would early safety evaluation (cycle day 7) in addition to cycle day 15 prevent subjects from experiencing more severe AEs?
 
 
 ## Guidelines
