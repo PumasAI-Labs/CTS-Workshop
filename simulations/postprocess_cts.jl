@@ -17,8 +17,39 @@ using CairoMakie, AlgebraOfGraphics
 mysims
 
 # each row of sims contains an array of 5000 patients
-mysims.sims[1] #* first set of 5000
+mysims.sims[1] #* first set of 5000 patients
 mysims.sims[1][1] #* first patient from first set
+
+##################################################################
+# Combining Profiles
+##################################################################
+mysims[!, :profiles] = map(eachrow(mysims)) do r
+
+    # df of individual sims becomes a SimulatedPopulation
+    # this way only have to call DataFrame once
+    profiles = [pt["profile"] for pt in r.sims]
+
+    # convert sims to df
+    df = DataFrame(profiles);
+
+    # add items for filtering later
+    df[!, :runid] .= r.runid
+    df[!, :skip_cday7] .= r.scenarios.SKIP_CDAY7
+
+    # return combined df
+    return df
+
+end;
+
+# combined df of all simulated obs
+profiles = reduce(vcat, mysims.profiles);
+
+# convert runid to categorical value for use in summaries
+profiles[!, :runlabel] = categorical(profiles.runid);
+#? why can't this be converted in place
+#//recode!(events.runlabel, 1=>"BLREF",2=>"EARLY6MG",3=>"ADJ4MG",4=>"PUB4MG",5=>"PUB6MG",6=>"PUB8MG")
+profiles[!, :runlabel] = recode(profiles.runlabel, 1=>"BLREF",2=>"EARLY6MG",3=>"ADJ4MG",4=>"PUB4MG",5=>"PUB6MG",6=>"PUB8MG");
+
 
 ##################################################################
 # Combining Trial Events
@@ -36,7 +67,14 @@ mysims[!, :trial_events] = map(eachrow(mysims)) do r
         df[!, :sdma0] .= pt["sdma0"]
         df[!, :plt0] .= pt["plt0"]
         df[!, :runid] .= r.runid
-        df[!, :skip_cday7] .= r.scenario.SKIP_CDAY7
+        df[!, :skip_cday7] .= r.scenarios.SKIP_CDAY7
+        df[!, :aegrade] .= ((plt,s) -> plt < s.PLT_G4 ? 4 :
+            plt < s.PLT_G3 ? 3 :
+            plt < s.PLT_G2 ? 2 :
+            plt < 100 ? 1 : # FIXME: shouldn't be hard coded, should be provided in scenario
+            0
+        ).(df.plt, Ref(r.scenarios))
+
         return df
     end
     
@@ -49,13 +87,13 @@ end;
 events = reduce(vcat, mysims.trial_events);
 
 # convert runid to categorical value for use in summaries
-events[!, :runlabel] = categorical(events.runid)
+events[!, :runlabel] = categorical(events.runid);
 #? why can't this be converted in place
 #//recode!(events.runlabel, 1=>"BLREF",2=>"EARLY6MG",3=>"ADJ4MG",4=>"PUB4MG",5=>"PUB6MG",6=>"PUB8MG")
 events[!, :runlabel] = recode(events.runlabel, 1=>"BLREF",2=>"EARLY6MG",3=>"ADJ4MG",4=>"PUB4MG",5=>"PUB6MG",6=>"PUB8MG");
 
 # reorganize columns
-select!(events, :id, :runlabel, :status, :cycle, :day, :cycle_day, :current_dose_dur, :cur_dose, :new_dose, :sdma0, :sdma, :plt0, :plt, :statdc, :interrupt, :skip_cday7, :runid)
+select!(events, :id, :runlabel, :status, :cycle, :day, :cycle_day, :current_dose_dur, :cur_dose, :new_dose, :sdma0, :sdma, :plt0, :plt, :aegrade, :statdc, :interrupt, :skip_cday7, :runid)
 
 ##################################################################
 # Observations per Scenario by Cycle
@@ -114,7 +152,7 @@ end
 =#
 
 ##################################################################
-# Percentage of Patients with G3 COT
+# Percentage of Patients with G3 CIT
 ##################################################################
 
 @chain events begin
@@ -122,4 +160,61 @@ end
     filter(df -> df.cycle_day ∈ [14,28] || (df.cycle_day == 7 && df.skip_cday7 == false), _)
 end
 
-events
+##################################################################
+# Average Recovery Time for G3 Event
+##################################################################
+
+
+##################################################################
+# SDMA Over Time
+##################################################################
+
+plot_df = @chain profiles begin
+    filter(df -> df.runid ≤ 3, _)
+    filter(df -> df.evid == 0, _)
+    transform(:time => (w -> w ./ 24) => :day)
+    combine(groupby(_, [:runlabel, :day]), [:plt, :sdma] .=> mean)
+end
+
+plt = data(plot_df) * 
+    mapping(:day => "Time (Days)", :sdma_mean => "Mean SDMA"; color = :runlabel) *
+    visual(Lines;)
+
+draw(plt)
+
+
+##################################################################
+# PLT Over Time
+##################################################################
+
+plot_df = @chain profiles begin
+    filter(df -> df.runid ≤ 3, _)
+    filter(df -> df.evid == 0, _)
+    transform(:time => (w -> w ./ 24) => :day)
+    combine(groupby(_, [:runlabel, :day]), [:plt, :sdma] .=> mean)
+end
+
+plt = data(plot_df) * 
+    mapping(:day => "Time (Days)", :plt_mean => "Mean Platelets"; color = :runlabel) *
+    visual(Lines;)
+
+draw(plt)
+
+
+##################################################################
+# Percentage of Patients Experiencing G4
+##################################################################
+#* note that this also describes the number of patients removed from the study in a given cycle
+
+@chain events begin
+    filter(df -> df.runid ≤ 3, _)
+    filter(df -> df.cycle_day ∈ [14,28] || (df.cycle_day == 7 && df.skip_cday7 == false), _)
+    filter(df -> df.plt < 25, _)
+    combine(groupby(_, [:runlabel, :cycle]), nrow => :nobs)
+end
+
+
+##################################################################
+# Distribution of Doses Per Cycle
+##################################################################
+

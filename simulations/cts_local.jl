@@ -111,7 +111,7 @@ mysims[!, :scenarios] .= [BLREF,EARLY6MG,ADJ4MG,NOADJ4MG,NOADJ6MG,NOADJ8MG];
 mysims[!, :patients] = map(eachrow(mysims)) do r
     df = DataFrame(id = collect(1:5000) .+ 10000)
     df[!, :models] .= Ref(r.models)
-    df[!, :scenario] .= Ref(r.scenario)
+    df[!, :scenario] .= Ref(r.scenarios)
     return df
 end;
 
@@ -121,3 +121,10 @@ mysims[!, :sims] = map(eachrow(mysims)) do r
         return sim_trial(subr, 3);
     end
 end;
+
+###################################################################
+# Save Results
+##################################################################
+# TODO: Add serialization and automatic folder creation based on Now()
+# FIXME: Temporary serialization for development of post processing
+serialize("results/mysims.jls", mysims)
