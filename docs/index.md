@@ -1,4 +1,7 @@
-# Pumas-AI Advanced Clinical Trial Simulations to Support MIDD Workshop
+---
+title: Pumas-AI Advanced Clinical Trial Simulations to Support MIDD Workshop
+description: Pumas-AI Advanced Clinical Trial Simulations to Support MIDD Workshop.
+---
 
 [![CC BY-SA 4.0](https://img.shields.io/badge/License-CC%20BY--SA%204.0-lightgrey.svg)](http://creativecommons.org/licenses/by-sa/4.0/)
 
@@ -26,16 +29,27 @@ At the end of the workshop, participants will:
 - Learn how to perform post-processing and visualizations of simulations for reporting.
 - Understand the strategy behind precedent-setting MIDD case-studies
 
-## How to contribute
+!!! success "Prerequisites"
 
-We use [Material for MkDocs](https://github.com/squidfunk/mkdocs-material)
-(MIT License) as the static site generator.
+    We recommend users having experience with pharmacometric workflows,
+    such as population-pharmacokinetic-pharmacodynamic modeling (PKPD),
+    while also being familiar with Julia syntax, especially variables and types.
 
-1. Clone the repository
-1. Install Material for MkDocs with `pip install mkdocs-material`
-1. Create or review content
-1. Preview the site with `mkdocs serve`
-1. Make a Pull Request
+The following Julia files are provided:
+
+- `01-PLACEHOLDER`: DESCRIPTION
+- `02-PLACEHOLDER`: DESCRIPTION
+
+## Schedule
+
+| Time (HH:MM) | Activity | Description                              |
+| ------------ | -------- | ---------------------------------------- |
+| 00:00        | Setup    | Download files required for the workshop |
+
+## Get in touch
+
+If you have any suggestions or want to get in touch with our education team,
+please send an email to <training@pumas.ai>.
 
 ## Authors
 
