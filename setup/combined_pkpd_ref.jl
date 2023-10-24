@@ -148,7 +148,7 @@ Gamma-PLT0              0.01
             # Drug effect on SDMA (Imax)
             defsdma' = kin*(1 - (imax*(central/vc)/(ic50 + (central/vc)))) - kout*defsdma
             # Drug effect on Platelets (Friberg)
-            prol' = kprol*prol * (1-(slope*central/vc)) * (circ/circ0)^γ - ktr*prol
+            prol' = kprol*prol * (1-(slope*central/vc)) * (circ0/circ)^γ - ktr*prol
             tran1' = ktr*prol - ktr*tran1
             tran2' = ktr*tran1 - ktr*tran2
             tran3' = ktr*tran2 - ktr*tran3
