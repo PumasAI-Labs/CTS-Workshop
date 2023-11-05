@@ -2,12 +2,6 @@
 
 function sim_profile(pt, regimen)
 
-    # set seed to simid id so that's it's unique for each subject
-    seed = pt["id"]
-
-    # set rng
-    rng = StableRNG(seed)
-
     # create subject
     subj = Subject(
         id = pt["id"],
@@ -17,8 +11,26 @@ function sim_profile(pt, regimen)
         covariates_direction = :left
     )
 
+    #? can rng be set to nothing so 2 calls to simobs aren't needed
+    if pt["scenario"].REPRODUCIBLE == false
+        # sim pk/pd for trial_day=1 through current trial_day
+        # all obs are effectively "pre-dose" samples for q24h dosing
+        sim = simobs(
+            pt["models"].combined_pkpd.mdl,
+            subj,
+            init_params(pt["models"].combined_pkpd.mdl),
+            obstimes = collect(1:1:pt["trial_day"]) .* 24
+        )
+
+        return sim
+
+    end
+
+    # set rng using numeric patient id as the seed because it's unique for each subject
+    rng = StableRNG(pt["id"])
+
     # set seed
-    Random.seed!(rng, seed)
+    Random.seed!(rng, pt["id"])
     
     # sim pk/pd for trial_day=1 through current trial_day
     # all obs are effectively "pre-dose" samples for q24h dosing
@@ -33,7 +45,6 @@ function sim_profile(pt, regimen)
     return sim
 
 end
-
 
 
 function create_covariate_dict(dfr)

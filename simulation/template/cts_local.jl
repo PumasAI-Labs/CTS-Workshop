@@ -3,8 +3,15 @@
 ##################################################################
 using Pumas
 using Serialization, StableRNGs, Random, StatsBase
-using DataFramesMeta, ShiftedArrays, CategoricalArrays
+using DataFramesMeta, Dates, ShiftedArrays, CategoricalArrays
 using CairoMakie, AlgebraOfGraphics
+
+##################################################################
+# Description
+##################################################################
+#=
+
+=#
 
 ##################################################################
 #* Define Scenarios
@@ -23,6 +30,7 @@ ADJ6MG = (
     RECHECK_SCHED = 7, # days between scheduled evaluations of PLT
     INIT_REG = (AMT = 6.0, TIME = 0, II = 24, ADDL = 6), # initial regimen given to all patients; ADDL = 6 (daily dosing, weekly observations)
     COVARIATES = Symbol[], # vector of symbols for cols containing cov values, empty because no covariates
+    REPRODUCIBLE = true, # flag for whether seed should be set to make sim results reproducible
 );
 
 # Early safety evaluation with immediate dose adjustment for G2 AE
@@ -30,15 +38,6 @@ EARLY6MG = (; ADJ6MG..., SKIP_CDAY7 = false);
 
 # Lower starting dose (4 mg PO q24h) with dose adjustment based on safety/efficacy
 ADJ4MG = (; ADJ6MG..., INIT_REG = (AMT = 4.0, TIME = 0, II = 24, ADDL = 6));
-
-# published example, 4 mg PO q24h without opportunity for dose adjustment
-NOADJ4MG = (; ADJ6MG..., NO_DOSE_ADJ = true, INIT_REG = (AMT = 4.0, TIME = 0, II = 24, ADDL = 6));
-
-# published example, 6 mg PO q24h without opportunity for dose adjustment
-NOADJ6MG = (; ADJ6MG..., NO_DOSE_ADJ = true, INIT_REG = (AMT = 6.0, TIME = 0, II = 24, ADDL = 6));
-
-# published example, 8 mg PO q24h without opportunity for dose adjustment
-NOADJ8MG = (; ADJ6MG..., NO_DOSE_ADJ = true, INIT_REG = (AMT = 8.0, TIME = 0, II = 24, ADDL = 6));
 
 ##################################################################
 #* Import Model(s)
@@ -100,6 +99,5 @@ end;
 ###################################################################
 # Save Results
 ##################################################################
-# TODO: Add serialization and automatic folder creation based on Now()
-# FIXME: Temporary serialization for development of post processing
-serialize("results/mysims.jls", mysims)
+# add serialized result to OUTDIR
+serialize(joinpath("results", OUTDIR, "mysims.jls"), mysims)
