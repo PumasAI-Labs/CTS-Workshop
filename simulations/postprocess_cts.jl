@@ -1,28 +1,32 @@
 ##################################################################
 # Load Packages
 ##################################################################
-using Serialization
-using DataFramesMeta, ShiftedArrays, CategoricalArrays
+using Pumas
+using Serialization, StableRNGs, Random, Dates
+using DataFramesMeta, CSV, ShiftedArrays, CategoricalArrays
 using CairoMakie, AlgebraOfGraphics
 
 ##################################################################
 # Helper Functions
 ##################################################################
-
+OUTDIR = "results/2023-11-04T20:00:47"
 
 ##################################################################
 # Explore Structure of Results
 ##################################################################
 # final df
-mysims
+mysims = deserialize("results/mysims.jls")
 
 # each row of sims contains an array of 5000 patients
-mysims.sims[1] #* first set of 5000 patients
-mysims.sims[1][1] #* first patient from first set
+#mysims.sims[1] #* first set of 5000 patients
+#mysims.sims[1][1] #* first patient from first set
+
 
 ##################################################################
 # Combining Profiles
 ##################################################################
+#* goal is create a dataframe that contains all profiles for all sims
+#* start by extracting profile from patient dictionary and adding them as col in results df
 mysims[!, :profiles] = map(eachrow(mysims)) do r
 
     # df of individual sims becomes a SimulatedPopulation
@@ -31,6 +35,9 @@ mysims[!, :profiles] = map(eachrow(mysims)) do r
 
     # convert sims to df
     df = DataFrame(profiles);
+
+    # convert ids to integer
+    df[!, :id] .= parse.(Int64, df.id)
 
     # add items for filtering later
     df[!, :runid] .= r.runid
@@ -48,13 +55,12 @@ profiles = reduce(vcat, mysims.profiles);
 profiles[!, :runlabel] = categorical(profiles.runid);
 #? why can't this be converted in place
 #//recode!(events.runlabel, 1=>"BLREF",2=>"EARLY6MG",3=>"ADJ4MG",4=>"PUB4MG",5=>"PUB6MG",6=>"PUB8MG")
-profiles[!, :runlabel] = recode(profiles.runlabel, 1=>"BLREF",2=>"EARLY6MG",3=>"ADJ4MG",4=>"PUB4MG",5=>"PUB6MG",6=>"PUB8MG");
+profiles[!, :runlabel] = recode(profiles.runlabel, [Pair(r.runid,r.labels) for r in eachrow(mysims)]...);
 
 
 ##################################################################
 # Combining Trial Events
 ##################################################################
-
 #* The overall goal is to create a single df with trial events for all scenarios in mysims
 # start by adding a column wherein each row contains a df of combined trial events for that row's patients
 mysims[!, :trial_events] = map(eachrow(mysims)) do r
@@ -90,59 +96,35 @@ events = reduce(vcat, mysims.trial_events);
 events[!, :runlabel] = categorical(events.runid);
 #? why can't this be converted in place
 #//recode!(events.runlabel, 1=>"BLREF",2=>"EARLY6MG",3=>"ADJ4MG",4=>"PUB4MG",5=>"PUB6MG",6=>"PUB8MG")
-events[!, :runlabel] = recode(events.runlabel, 1=>"BLREF",2=>"EARLY6MG",3=>"ADJ4MG",4=>"PUB4MG",5=>"PUB6MG",6=>"PUB8MG");
+events[!, :runlabel] = recode(events.runlabel,  [Pair(r.runid,r.labels) for r in eachrow(mysims)]...);
 
 # reorganize columns
-select!(events, :id, :runlabel, :status, :cycle, :day, :cycle_day, :current_dose_dur, :cur_dose, :new_dose, :sdma0, :sdma, :plt0, :plt, :aegrade, :statdc, :interrupt, :skip_cday7, :runid)
+select!(
+    events,
+    :id, :runlabel, :status, :cycle, :day, 
+    :cycle_day, :current_dose_dur, :cur_dose, :new_dose, 
+    :sdma0, :sdma, :plt0, :plt, 
+    :aegrade, :statdc, :interrupt, :skip_cday7, 
+    :runid
+);
+
 
 ##################################################################
-# Observations per Scenario by Cycle
+#* Subjects on study by cycle and scenario
 ##################################################################
-
-#* Reasonable assumption given different scenarios that the number of obs per scenario will differ between cycles
-# observations per cycle by scenario
-@chain events begin
-    filter(df -> df.runid ≤ 3, _)
-    combine(groupby(_, [:runlabel, :cycle]), nrow => :nobs)
-    unstack(_, :cycle, :nobs)
-end
-
-#* small helper function to compare dataframes
-#! only works if all columns are numbers or can be converted to numbers 
-function compare_dfs(df1, df2)
-    #select!(df1, :cycle, :day, :cycle_day, All())
-    #select!(df2, :cycle, :day, :cycle_day, All())
-    if df1 == df2
-        return true
-    else  
-        return isapprox.(df1,df2)
-    end
-end
-
-#? is cycle 1 the same for runids 1 and 2 (excluding cols that are categorical or known to differ by definition)
-compare_dfs(
-    select(filter(df -> df.runid == 1 && df.cycle == 1, events), Not([:runlabel,:skip_cday7,:runid])),
-    select(filter(df -> df.runid == 2 && df.cycle == 1, events), Not([:runlabel,:skip_cday7,:runid]))    
-)
-
-#* implies that early safety eval doesn't help in cycle 1, confirm no PLT <50 in BLREF cycle 1
-@chain events begin
-    filter(df -> df.runid == 1, _)
-    filter(df -> df.cycle == 1 && df.cycle_day == 7, _)
-    filter(df -> df.plt < 50, _)
-end
-
-##################################################################
-# Subjects Enrolled Per Scenario by Cycle
-##################################################################
-
 #* Reasonable to assume number of patients enrolled during each cycle will differ between scenarios
+@info "Subjects on study by cycle and scenario"
 @chain events begin
-    filter(df -> df.runid ≤ 3, _)
     select(:id, :runlabel, :cycle)
     unique(_)
     combine(groupby(_, [:runlabel, :cycle]), nrow => :enrolled)
-    unstack(_, :cycle, :enrolled)
+    transform(groupby(_, :runlabel), :enrolled => (e -> first(e)) => :N)
+    transform(groupby(_, :runlabel), :enrolled => (e -> 100*(e./first(e))) => :pct)
+    transform([:enrolled,:N,:pct] => ByRow((e,n,p) -> "$p% ($e/$n)") => :value)
+    select(:runlabel, :cycle, :value)
+    unstack(_, :runlabel, :value)
+    @aside CSV.write(joinpath(OUTDIR,"subjects_on_study.csv"), _)
+    println
 end
 
 #=
@@ -152,69 +134,491 @@ end
 =#
 
 ##################################################################
-# Percentage of Patients with G3 CIT
+#* PD response over time
 ##################################################################
+# ids for any patient that experienced a safety interrupt at any point
+idsnointerrupts = @chain events begin
+    transform(groupby(_, [:runlabel, :id]), [:interrupt] => maximum ∘ cumsum => :ninterrupts)
+    select(:runlabel, :id, :ninterrupts)
+    unique
+end;
 
+plotdf = @chain profiles begin
+    filter(df -> df.evid == 0, _)
+    innerjoin(
+        _,
+        idsnointerrupts,
+        on = [:runlabel, :id]
+    )
+    transform(:ninterrupts => ByRow(n -> ifelse(n == 0, 1, 0)) => :nointerrupts)
+    transform(:time => (w -> w ./ 168) => :week)
+    combine(groupby(_, [:runlabel, :nointerrupts, :week]), [:plt, :sdma] .=> mean)
+    stack([:plt_mean, :sdma_mean], variable_name = :endpoint, value_name = :response)
+    transform([:nointerrupts, :endpoint] .=> categorical; renamecols = false)
+end
+
+# TODO: Decouple y-axis upper (platelets) and lower (SDMA) facet
+#? Should this be written in Makie?
+plt = data(plotdf) * 
+    mapping(
+        :week => "Time (Weeks)",
+        :response => "Response";
+        color = :runlabel => "",
+        linestyle = :runlabel => "",
+        col = :nointerrupts => renamer(0 => "Interrupts", 1 => "No Interrupts"),
+        row = :endpoint => renamer("plt_mean" => "Platelet (10⁹/L)", "sdma_mean" => "SDMA (ng/mL)")) *
+    visual(Lines; linewidth = 3, linetype = :runlabel)
+
+#? These options are repeated A LOT; can this be included as a theme to cut down on repetition
+fig = draw(
+    plt;
+    figure = (;
+        resolution = (1000,1000),
+        fontsize = 20,
+        colgap = 10
+    ),
+    axis = (;
+        xticks = 0:4:16,
+        ylabelfont = "TeX Gyre Heros Bold Makie",
+        xlabelfont = "TeX Gyre Heros Bold Makie",
+        #title = "Mean SDMA over time by scenario",
+        #titlealign = :left,
+        #titlesize = 26
+    ),
+    legend = (;
+        position = :bottom,
+        titleposition = :left,
+        framevisible = false,
+        padding = 0
+    ),
+    palettes = (;
+        color = cgrad(:seaborn_colorblind, 5, categorical = true)
+    )
+)
+
+# save current figure
+save(joinpath(OUTDIR, "pd_over_time.png"), fig)
+
+##################################################################
+#* Proportion of patients experiencing CIT at any point by cycle and grade 
+##################################################################
+@info "Proportion of patients experiencing CIT at any point by cycle and grade"
 @chain events begin
-    filter(df -> df.runid ≤ 3, _)
+    transform(groupby(_, :runlabel), :id => length ∘ unique => :N)
     filter(df -> df.cycle_day ∈ [14,28] || (df.cycle_day == 7 && df.skip_cday7 == false), _)
+    transform(:plt => ByRow(p -> ifelse(p < 100, 1, 0)) => :islt100)
+    transform(groupby(_, [:runlabel, :id]), :islt100 => maximum => :iscit)
+    combine(groupby(_, [:runlabel, :id]), first)
+    combine(groupby(_, :runlabel), :N => Int ∘ mean => :N, :iscit => sum => :iscit)
+    transform([:iscit, :N] => ByRow((np,n) -> "$(round(100*(np/n), digits =1))% ($np/$n)") => :pct)
+    select(:runlabel, :pct)
+    @aside CSV.write(joinpath(OUTDIR,"patients.csv"), _)
+    println
+end
+
+
+##################################################################
+#* Incidence of AEs by Cycle and Grade - BARPLOT
+##################################################################
+
+# FIXME: Early eval means an extra event which is artificially increasing the percentage for EARLY6MG and ADJ4MG
+plotdf = @chain events begin
+    filter(df -> df.cycle_day ∈ [14,28] || (df.cycle_day == 7 && df.skip_cday7 == false), _)
+    combine(groupby(_, [:runlabel, :cycle, :aegrade]), nrow => :nevents)
+    transform(groupby(_, :runlabel), :nevents => (n -> 100*(n ./ sum(n))) => :pct)
+    #unstack(_, :runlabel, :nevents)
+end
+
+# TODO: Add total number of events at top of cols
+plt = data(plotdf) *
+mapping(:cycle => "Cycle", :pct => "Percent (%)"; color = :aegrade => nonnumeric => "AE Grade", col = :runlabel) *
+visual(BarPlot;)
+
+fig = draw(
+    plt;
+    figure = (;
+        resolution = (1000,1000),
+        fontsize = 20,
+        colgap = 10
+    ),
+    axis = (;
+        #xticks = [0,12,24,36,52,76,104],
+        ylabelfont = "TeX Gyre Heros Bold Makie",
+        xlabelfont = "TeX Gyre Heros Bold Makie",
+        #title = "Mean SDMA over time by scenario",
+        titlealign = :left,
+        titlesize = 26
+    ),
+    legend = (;
+        position = :bottom,
+        titleposition = :left,
+        framevisible = false,
+        padding = 0
+    ),
+    palettes = (;
+        color = cgrad(:seaborn_colorblind, 5, categorical = true)
+    )
+)
+
+# save current figure
+save(joinpath(OUTDIR, "incidence_cit_barplot.png"), fig)
+
+##################################################################
+#* Incidence of AEs by Cycle and Grade - RAINCLOUD
+##################################################################
+
+#* helper function for CIT raincloud
+#* used helper because need to make 3 separate plots; 1 for Grades 1-3
+function plot_cit_distribution(plotdata, obs, aegrade)
+    plotdf = subset(plotdata, obs => x -> x .> 0)
+
+    f = Figure(
+        resolution = (1000,1000),
+        fontsize = 20,
+        colgap = 10
+    )
+
+    colors = cgrad(:seaborn_colorblind, 5, categorical = true);
+
+    a = Axis(
+        f[1,1], 
+        ylabel = "Proportion of Time at or below Grade $aegrade CIT",
+        ylabelfont = "TeX Gyre Heros Bold Makie",
+        xticklabelfont = "TeX Gyre Heros Bold Makie",
+        title = "Overall Time Spent in CIT",
+        titlesize = 26,
+        titlealign = :left
+    )
+
+    rainclouds!(a, string.(plotdf.runlabel), plotdf[!, obs]; color = colors[levelcode.(plotdf.runlabel)])
+
+    return f
+
+end;
+
+plotdf = @chain events begin
+    filter(df -> df.cycle_day ∈ [14,28] || (df.cycle_day == 7 && df.skip_cday7 == false), _)
+    transform(:plt => ByRow(p -> ifelse(p < 50, 1, 0)) => :islt50)
+    transform(:plt => ByRow(p -> ifelse(p < 75, 1, 0)) => :islt75)
+    transform(:plt => ByRow(p -> ifelse(p < 100, 1, 0)) => :islt100)
+    combine(groupby(_, [:runlabel, :id]), [:islt50, :islt75, :islt100] .=> mean .=> [:timeg3, :timeg2, :timeg1])
+end
+
+# display and save each of 3 CIT raincloud plots
+for (i,j) in enumerate([:timeg1, :timeg2, :timeg3])
+    fig = plot_cit_distribution(plotdf, j, i)
+    display(fig)
+    save(joinpath(OUTDIR, "incidence_g$(i)cit_raincloud.png"), fig)
+end
+
+
+##################################################################
+#* Percentage of Subjects with G3 CIT - Any Cycle
+##################################################################
+#* this is very specific because G3 is where interrupts normally happen and the requirement
+#* for restarting therapy
+@info "Percentage of Subjects with G3 CIT - Any Cycle"
+@chain events begin
+    filter(df -> df.cycle_day ∈ [14,28] || (df.cycle_day == 7 && df.skip_cday7 == false), _)
+    transform(groupby(_, [:runlabel]), :id => length ∘ unique => :N)
+    filter(df -> df.interrupt, _)
+    combine(groupby(_, [:runlabel, :id]), first)
+    combine(groupby(_, [:runlabel]), :N => Int ∘ mean => :N, :interrupt => sum => :npatients)
+    transform([:npatients, :N] => ByRow((np,n) -> "$(round(100*(np/n), digits =1))% ($np/$n)") => :pct)
+    select(:runlabel, :pct)
+    @aside CSV.write(joinpath(OUTDIR,"subjects_g3cit.csv"), _)
+    println
 end
 
 ##################################################################
-# Average Recovery Time for G3 Event
+#* Average Recovery Time for G3 Event
 ##################################################################
-
-
-##################################################################
-# SDMA Over Time
-##################################################################
-
-plot_df = @chain profiles begin
-    filter(df -> df.runid ≤ 3, _)
-    filter(df -> df.evid == 0, _)
-    transform(:time => (w -> w ./ 24) => :day)
-    combine(groupby(_, [:runlabel, :day]), [:plt, :sdma] .=> mean)
+plotdf = @chain events begin
+    transform([:cur_dose, :new_dose, :interrupt] => ByRow((c,n,i) -> ifelse(i && c > 0 && n == 0, 1, 0)) => :interruptstart)
+    transform(groupby(_, :runlabel), :interruptstart => cumsum => :interruptgroup)
+    filter(df -> df.interrupt, _)
+    combine(groupby(_, [:runlabel, :interruptgroup]), nrow => :nweeks)
+    combine(groupby(_, [:runlabel, :nweeks]), nrow => :ninterrupts)
+    transform(groupby(_, :runlabel), [:ninterrupts] => (n -> 100*(n ./ sum(n))) => :pct)
 end
 
-plt = data(plot_df) * 
-    mapping(:day => "Time (Days)", :sdma_mean => "Mean SDMA"; color = :runlabel) *
-    visual(Lines;)
+plt = data(plotdf) *
+mapping(:runlabel => "Scenario", :pct => "Percent (%)"; color = :nweeks => nonnumeric => "Recovery Time (Weeks)", dodge = :nweeks => nonnumeric => "") *
+visual(BarPlot)
 
-draw(plt)
+fig = draw(
+    plt;
+    figure = (;
+        resolution = (1000,1000),
+        fontsize = 20,
+        colgap = 10
+    ),
+    axis = (;
+        #xticks = [0,12,24,36,52,76,104],
+        ylabelfont = "TeX Gyre Heros Bold Makie",
+        xlabelfont = "TeX Gyre Heros Bold Makie",
+        #title = "Mean SDMA over time by scenario",
+        titlealign = :left,
+        titlesize = 26
+    ),
+    legend = (;
+        position = :bottom,
+        titleposition = :left,
+        framevisible = false,
+        padding = 0
+    ),
+    palettes = (;
+        color = cgrad(:seaborn_colorblind, 5, categorical = true)
+    )
+)
 
+# save current figure
+save(joinpath(OUTDIR, "recovery_time_g3cit.png"), fig)
 
 ##################################################################
-# PLT Over Time
-##################################################################
-
-plot_df = @chain profiles begin
-    filter(df -> df.runid ≤ 3, _)
-    filter(df -> df.evid == 0, _)
-    transform(:time => (w -> w ./ 24) => :day)
-    combine(groupby(_, [:runlabel, :day]), [:plt, :sdma] .=> mean)
-end
-
-plt = data(plot_df) * 
-    mapping(:day => "Time (Days)", :plt_mean => "Mean Platelets"; color = :runlabel) *
-    visual(Lines;)
-
-draw(plt)
-
-
-##################################################################
-# Percentage of Patients Experiencing G4
+#* Percentage of subjects Experiencing G4 CIT
 ##################################################################
 #* note that this also describes the number of patients removed from the study in a given cycle
-
+@info "Percentage of subjects experiencing G4 CIT"
 @chain events begin
-    filter(df -> df.runid ≤ 3, _)
-    filter(df -> df.cycle_day ∈ [14,28] || (df.cycle_day == 7 && df.skip_cday7 == false), _)
-    filter(df -> df.plt < 25, _)
-    combine(groupby(_, [:runlabel, :cycle]), nrow => :nobs)
+    transform(groupby(_, :runlabel), :id => length ∘ unique => :N)
+    filter(df -> df.statdc, _)
+    combine(groupby(_, [:runlabel, :cycle]), :N => identity => :N, nrow => :npatients)
+    unique(_)
+    transform([:npatients, :N] => ByRow((np,n) -> "$(round(100*(np/n), digits =1))% ($np/$n)") => :pct)
+    select(:runlabel, :cycle, :pct)
+    unstack(_, :runlabel, :pct)
+    @aside CSV.write(joinpath(OUTDIR,"subjects_g4cit.csv"), _)
+    println
 end
 
 
 ##################################################################
-# Distribution of Doses Per Cycle
+#* Percentage of subjects with ≥78% Reduction in SDMA from BL
 ##################################################################
+plotdf = @chain events begin
+    filter(df -> df.cycle_day == 28, _)
+    transform([:sdma,:sdma0] => ByRow((s,bl) -> (1 - (s/bl))*100) => :efficacy)
+    transform(:efficacy => ByRow(e -> ifelse(e ≥ 78, 1, 0)) => :isge78)
+    combine(groupby(_, [:runlabel, :cycle]), nrow => :npatients, :isge78 => mean => :responders)
+    transform(:responders => ByRow(r -> r*100); renamecols = false)
+end
+
+plt = data(plotdf) *
+mapping(:cycle => nonnumeric => "Cycle", :responders => "% Patients"; color = :runlabel => "", linestyle = :runlabel => "") *
+visual(Lines; linewidth = 3)
+
+fig = draw(
+    plt;
+    figure = (;
+        resolution = (1000,1000),
+        fontsize = 20,
+        colgap = 10
+    ),
+    axis = (;
+        #xticks = [0,12,24,36,52,76,104],
+        ylabelfont = "TeX Gyre Heros Bold Makie",
+        xlabelfont = "TeX Gyre Heros Bold Makie",
+        title = "Target Attainment at Cycle Day 28",
+        titlealign = :left,
+        titlesize = 26
+    ),
+    legend = (;
+        position = :bottom,
+        titleposition = :left,
+        framevisible = false,
+        padding = 0
+    ),
+    palettes = (;
+        color = cgrad(:seaborn_colorblind, 5, categorical = true)
+    )
+)
+
+# save current figure
+save(joinpath(OUTDIR, "subjects_at_sdma_target.png"), fig)
+
+##################################################################
+#*  Achievement of SDMA target by cycle and scenario
+##################################################################
+
+tbl = @chain events begin
+    transform(groupby(_, :runlabel), :id => length ∘ unique => :N)
+    filter(df -> df.cycle_day == 28, _)
+    transform([:sdma,:sdma0] => ByRow((s,bl) -> (1 - (s/bl))*100) => :efficacy)
+    transform(:efficacy => ByRow(e -> ifelse(e ≥ 78, 1, 0)) => :isge78)
+    filter(df -> df.isge78 == 1, _)
+    combine(groupby(_, [:runlabel, :id]), first)
+    combine(groupby(_, [:runlabel, :cycle]), :N => Int ∘ mean => :N, nrow => :npatients)
+    transform(groupby(_, :runlabel), [:N, :npatients] => ((n,p) -> n .- sum(p)) => :NR)
+    transform(groupby(_, :runlabel), [:N, :npatients] => ((n,p) -> 100*(p./n)) => :pct_resp)
+    transform(groupby(_, :runlabel), [:N, :NR] => ((n,nr) -> 100*(nr./n)) => :pct_nonresp)
+    transform([:npatients,:N,:pct_resp] => ByRow((p,n,pr) -> "$(round(pr, digits =1))% ($p/$n)") => :responders)
+    transform([:NR,:N,:pct_nonresp] => ByRow((nr,n,pnr) -> "$(round(pnr, digits =1))% ($nr/$n)") => :nonresponders)
+end;
+
+responders = @chain tbl begin
+    select(:runlabel, :cycle, :responders)
+    unstack(:runlabel, :responders)
+    transform(:cycle => (c -> string.(c)); renamecols = false)
+end;
+
+nonresponders = @chain tbl begin
+    select(:runlabel, :cycle, :nonresponders)
+    combine(groupby(_, :runlabel), first)
+    unstack(:runlabel, :nonresponders)
+    transform(:cycle => (c -> "NR"); renamecols = false)
+end;
+
+@info "Achievement of SDMA target by cycle and scenario"
+finaltbl = vcat(responders, nonresponders)
+finaltbl
+# save table
+CSV.write(joinpath(OUTDIR, "sdma_target_by_scenario.csv"), finaltbl)
+
+##################################################################
+#* Summary of number of cycles at SDMA target by scenario
+##################################################################
+@info "Summary of number of cycles at SDMA target by scenario"
+@chain events begin
+    transform(groupby(_, :runlabel), :id => length ∘ unique => :N)
+    filter(df -> df.cycle_day == 28, _)
+    transform([:sdma,:sdma0] => ByRow((s,bl) -> (1 - (s/bl))*100) => :efficacy)
+    transform(:efficacy => ByRow(e -> ifelse(e ≥ 78, 1, 0)) => :isge78)
+    combine(groupby(_, [:runlabel, :id]), :N => Int ∘ mean => :N, :isge78 => sum => :cyclesatgoal)
+    combine(groupby(_, [:runlabel, :cyclesatgoal]), :N => Int ∘ mean => :N, nrow => :npatients)
+    transform(groupby(_, :runlabel), :npatients => sum => :N28)
+    transform([:cyclesatgoal, :N, :npatients, :N28] => ByRow((c,n,np,n28) -> ifelse(c == 0, np+(n-n28), np)) => :npatients)
+    transform([:npatients,:N] => ByRow((np,n) -> "$(round(100*(np/n), digits =1))% ($np/$n)") => :pct)
+    select(:runlabel, :cyclesatgoal, :pct)
+    unstack(_, :runlabel, :pct)
+    @aside CSV.write(joinpath(OUTDIR,"cycles_at_goal.csv"), _)
+    println
+end
+
+
+##################################################################
+#* Time Above Target Reduction
+##################################################################
+
+plotdf = @chain profiles begin
+    filter(df -> df.evid == 0, _)
+    transform([:sdma,:sdma0] => ByRow((s,bl) -> (1 - (s/bl))*100) => :efficacy)
+    transform(:efficacy => ByRow(e -> ifelse(e ≥ 78, 1, 0)) => :isge78)
+    combine(groupby(_, [:runlabel, :id]), :isge78 => mean => :timeabovegoal)
+end
+
+f = Figure(
+    resolution = (1000,1000),
+    fontsize = 20,
+    colgap = 10
+)
+
+a = Axis(
+    f[1,1], 
+    ylabel = "Proportion of Time SDMA Reduction Above Target",
+    ylabelfont = "TeX Gyre Heros Bold Makie",
+    xticklabelfont = "TeX Gyre Heros Bold Makie",
+    title = "Durability of SDMA Repsonse",
+    titlesize = 26,
+    titlealign = :left
+)
+colors = cgrad(:seaborn_colorblind, 5, categorical = true)
+rainclouds!(a, string.(plotdf.runlabel), plotdf.timeabovegoal; color = colors[levelcode.(plotdf.runlabel)])
+
+# save current figure
+save(joinpath(OUTDIR, "time_above_target.png"), f)
+
+
+##################################################################
+#* Distribution of Doses Per Cycle
+##################################################################
+
+#? decide whether this should be done in Makie
+# TODO: stacked area chart?
+# TODO: emphasize 0 line (will require makie)
+#=
+function plot_dosing(obs, ysym, filter_vars)
+
+    size_in_inches = (6.5, 4.35)
+    dpi = 300
+    size_in_pixels = size_in_inches .* dpi
+    
+    # set color gradient
+    colors = cgrad(:viridis, 5, categorical=true)
+
+    # plot object
+    plt = data(filter(df -> df.scenario ∈ filter_vars, obs)) *
+        mapping(:week => "Week", ysym => "Percent"; color = :new_dose => nonnumeric => "", layout = :scenario) *
+        visual(Lines;)
+
+    # draw plot
+    draw(plt;
+        figure = (;
+            resolution = size_in_pixels,
+            fontsize = 20,
+            colgap = 10
+        ),
+        axis = (;
+            xticks = [0,12,24,36,52,76,104],
+            ylabelfont = "TeX Gyre Heros Bold Makie",
+            xlabelfont = "TeX Gyre Heros Bold Makie"
+        ),
+        legend = (;
+            position = :bottom,
+            titleposition = :left,
+            framevisible = false,
+            padding = 0
+        ),
+        palettes = (;
+            color = colors
+        )
+    )
+
+end
+=#
+
+plotdf = @chain events begin
+    filter(df -> df.cycle_day == 28 || (df.cycle == 1 && df.cycle_day == 0), _)
+    transform([:cycle, :cycle_day] => ByRow((c,d) -> ifelse(c==1 && d==0, c-1, c)) => :cycle)
+    combine(groupby(_, [:runlabel, :cycle, :new_dose]), :new_dose => (d -> length(d)) => :nobs)
+    transform(groupby(_, [:runlabel, :cycle]), :nobs => (n -> 100* n ./ sum(n)) => :pct)
+end
+
+plt = data(plotdf) *
+    mapping(:cycle => "Cycle", :pct => "Percent (%)"; color = :new_dose => nonnumeric => "", layout = :runlabel) *
+    visual(Lines; linewidth = 3)
+
+# FIXME this causes an extra empty axis to be added to the plot
+#plt_hlines = mapping([25, 75]) * visual(HLines; color = (:black, 0.5), linestyle = :dash)
+
+fig = draw(
+    plt; # + plt_hlines;
+    figure = (;
+        resolution = (1000,1000),
+        fontsize = 20,
+        colgap = 10
+    ),
+    axis = (;
+        #xticks = [0,12,24,36,52,76,104],
+        ylabelfont = "TeX Gyre Heros Bold Makie",
+        xlabelfont = "TeX Gyre Heros Bold Makie",
+        #title = "Mean PLT over time by scenario",
+        titlealign = :left,
+        titlesize = 26
+    ),
+    legend = (;
+        position = :bottom,
+        titleposition = :left,
+        framevisible = false,
+        padding = 0
+    ),
+    palettes = (;
+        color = cgrad(:seaborn_colorblind, 5, categorical = true)
+    )
+)
+
+# save current figure
+save(joinpath(OUTDIR, "dose_distribution_by_cycle.png"), fig)
+
+
 
