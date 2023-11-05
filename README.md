@@ -76,7 +76,7 @@
 # CTS Exercise
 
 ## Rationale
-For each simulation in the manuscript, all subjects were given the same dose of PF06 without an opportunity to modify their dose based upon either PD response. It's possible that allowing for dose modification could increase the probability of target attainment while further minimizing the risk of serious adverse events. Realistically, it's a little early in the drug's development cycle to consider these questions, but they provide an excellent justification for performing a more advanced simulation.
+For each simulation in the manuscript, all subjects were given the same dose of PF06 without an opportunity to modify their dose based upon either PD response. It's possible that allowing for dose modification could increase the probability of target attainment while further minimizing the risk of serious adverse events. This is a commonly encountered, difficult-to-answer question from Phase 1B/Phase 2 drug development.
 
 ## Key Questions
 1. What are the predicted outcomes (safety, efficacy) for 4-8mg PO q24h regimens without dose adjustment?
