@@ -56,7 +56,7 @@
             central' =  ka*depot - (cl+q)/vc*central + q/vp*peripheral
             peripheral' = q/vc*central - q/vp*peripheral
             # Drug effect on Platelets (Friberg)
-            prol' = kprol*prol * (1-(slope*central/vc)) * (circ0/circ)^γ - ktr*prol
+            prol' = kprol*prol * (1-(slope*central/vc)) * (circ0/(circ+1))^γ - ktr*prol
             tran1' = ktr*prol - ktr*tran1
             tran2' = ktr*tran1 - ktr*tran2
             tran3' = ktr*tran2 - ktr*tran3
