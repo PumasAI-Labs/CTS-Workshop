@@ -255,7 +255,8 @@ filter!(df -> !(df.evid == 0 && all(ismissing, df[Cols(:dv, :sdma, :plt)])), myd
 ##################################################################
 # drop extra cols and save trial data
 # a word of warning about using .jls and serialization
+mkpath(joinpath(@__DIR__, "../data"))
 @chain mydf begin
     select(:id, :evid, :time, :amt, :cmt, :dv, :sdma, :plt, :tdd, :freqn)
-    serialize("data/trial_data.jls", _)
+    serialize(joinpath(@__DIR__, "../data/trial_data.jls"), _)
 end

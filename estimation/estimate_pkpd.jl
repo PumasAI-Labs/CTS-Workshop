@@ -21,11 +21,11 @@ FIXME: thing that needs to be fixed that may affect script
 # Estimate PK Params
 ##################################################################
 # import datset
-trialdf = deserialize("data/trial_data.jls")
+trialdf = deserialize(joinpath(@__DIR__, "../data/trial_data.jls"))
 
 # import pk estimation model
 #* string path in include() is based on location of current file, not result of pwd()
-pkmdl = include("models/pk.jl").mdl
+pkmdl = include(joinpath(@__DIR__, "models/pk.jl")).mdl
 
 # create Population for fitting
 pkpop = @chain trialdf begin
@@ -48,8 +48,7 @@ findinfluential(
     pkmdl,
     pkpop,
     init_params(pkmdl),
-    Pumas.FOCE();
-    k = length(pkpop)
+    FOCE()
 )
 
 # fit model
@@ -57,7 +56,7 @@ pkfit = fit(
     pkmdl,
     pkpop,
     init_params(pkmdl),
-    Pumas.FOCE()
+    FOCE()
 )
 
 # dataframe of pk values with posthoc pk param estimates from inspect() used for sequential fitting
@@ -71,7 +70,7 @@ end
 # Estimate PD (SDMA) Params
 ##################################################################
 # import sdma estimation model
-sdmamdl = include("models/sdma.jl").mdl
+sdmamdl = include(joinpath(@__DIR__, "models/sdma.jl")).mdl
 
 # create Population for fitting
 # ? this isn't returning a Population, just a vector of subjects, why?
@@ -96,8 +95,7 @@ findinfluential(
     sdmamdl,
     sdmapop,
     init_params(sdmamdl),
-    Pumas.FOCE();
-    k = length(sdmapop)
+    FOCE()
 )
 
 # fit model
@@ -105,14 +103,14 @@ sdmafit = fit(
     sdmamdl,
     sdmapop,
     init_params(sdmamdl),
-    Pumas.FOCE()
+    FOCE()
 )
 
 ##################################################################
 # Estimate PD (Platelets) Params
 ##################################################################
 # import platelet model
-pltmdl = include("models/platelets.jl").mdl
+pltmdl = include(joinpath(@__DIR__, "models/platelets.jl")).mdl
 
 # create Population for fitting
 # ? As above, this isn't returning a population, it's a vector of subjects
@@ -136,8 +134,7 @@ findinfluential(
     pltmdl,
     pltpop,
     init_params(pltmdl),
-    Pumas.FOCE();
-    k = length(pltpop)
+    FOCE()
 )
 
 # fit model
@@ -145,14 +142,15 @@ pltfit = fit(
     pltmdl,
     pltpop,
     init_params(pltmdl),
-    Pumas.FOCE()
+    FOCE()
 )
 
 ##################################################################
 # Export Fits
 ##################################################################
 # parent out directory based on current UTC datetime
-outdir = joinpath("estimation/fits/",string(now(Dates.UTC))[begin:end-4]);
+mkpath(joinpath(@__DIR__, "fits"))
+outdir = joinpath(@__DIR__, "estimation/fits/", Dates.format(now(Dates.UTC), "yyyy-mm-ddTHH:MM:SS"))
 
 # export fits and key diagnostics
 for (i, j) in zip([pkfit, sdmafit, pltfit], ["pk", "sdma", "plt"])
