@@ -1,3 +1,26 @@
+##################################################################
+# Initial estimates
+##################################################################
+#=
+PK (PF-06939999) ----------------------
+Fixed Effects   θ       Estimate    Units
+tvcl            1       9.53        L/hr
+tvvc            2       160         L
+tvq             3       26.2        L/hr
+tvvp            4       285         L
+tvka            5       2.31        hr⁻¹
+tvfs            6       0.647
+
+Random Effects  CV%     VAR
+IIV-CL          38.9    0.151
+IIV-Vc          61.1    0.373
+IIV-Q
+IIV-Vp
+IIV-ka
+IIV-FS          53.6    0.287
+RUV (exp)               0.112
+=#
+
 (; 
     mdl = @model begin
 
@@ -43,7 +66,7 @@
         end
 
         @derived begin
-            # PK
+            # PK (ng/mL)
             cp := @. central/vc
             dv ~ @. LogNormal(log(cp), sqrt(σ²pk))
         end

@@ -1,9 +1,9 @@
 ##################################################################
 # Load Packages
 ##################################################################
-using Pumas, PumasPlots
+using Pumas, PumasPlots, PumasUtilities
 using DataFramesMeta, Dates, CSV, Serialization
-
+using CairoMakie, AlgebraOfGraphics
 ##################################################################
 # Comment Key
 ##################################################################
@@ -60,7 +60,7 @@ pkfit = fit(
     Pumas.FOCE()
 )
 
-# dataframe of pk values with posthoc pk param estimates from inspect() used for sequential fitting
+#* dataframe of pk values with posthoc pk param estimates from inspect() used for sequential fitting
 pkdf = @chain DataFrame(inspect(pkfit)) begin
     select(:id, :evid, :time, :cl => :cli, :vc => :vci, :q => :qi, :vp => :vpi, :ka => :kai, :bioav_depot => :fi)
     leftjoin(trialdf, _, on = [:id,:time,:evid])
@@ -152,36 +152,37 @@ pltfit = fit(
 # Export Fits
 ##################################################################
 # parent out directory based on current UTC datetime
-outdir = joinpath("estimation/fits/",string(now(Dates.UTC))[begin:end-4]);
+OUTDIR = joinpath("estimation/fits/",string(now(Dates.UTC))[begin:end-4]);
 
 # export fits and key diagnostics
+#* CairoMakie needs to be loaded for save function to work
 for (i, j) in zip([pkfit, sdmafit, pltfit], ["pk", "sdma", "plt"])
     @info "Starting $j export!"
-    mkpath(joinpath(outdir, j))
+    mkpath(joinpath(OUTDIR, j))
     # infer step
     try
-        CSV.write(joinpath(outdir,j,j*"_coeftable.csv"),coeftable(infer(i)))
+        CSV.write(joinpath(OUTDIR,j,j*"_coeftable.csv"),coeftable(infer(i)))
     catch e
         @info "Could not generate CoefTable!"
     end
 
     #gof panel
     try
-        save(joinpath(outdir,j,j*"_gof.png"), goodness_of_fit(inspect(i, nsim=200)))
+        save(joinpath(OUTDIR,j,j*"_gof.png"), goodness_of_fit(inspect(i, nsim=200)))
     catch e
         @info "Could not generate GOF panel!"
     end
 
     #vpc
     try
-        save(joinpath(outdir,j,j*"_vpc.png"), vpc_plot(vpc(i; prediction_correction=true)))
+        save(joinpath(OUTDIR,j,j*"_vpc.png"), vpc_plot(vpc(i; prediction_correction=true)))
     catch e
         @info "Could not generate VPC!"
     end
 
     #serialize fit
     try
-        serialize(joinpath(outdir,j,j*".jls"), i)
+        serialize(joinpath(OUTDIR,j,j*".jls"), i)
     catch e
         @info "Could not serialize fit!"
     end

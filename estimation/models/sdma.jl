@@ -1,3 +1,25 @@
+##################################################################
+# Initial estimates
+##################################################################
+#=
+PD-Efficacy (SDMA) --------------------
+Fixed Effects   θ       Estimate    Units
+tvimax          1       0.823   
+tvic50          2       0.425       ng/mL = μg/L
+tvkout          3       0.00708     hr⁻¹
+sdma0           4       113         ng/mL = μg/L
+
+Random Effects  CV%     VAR
+IIV-Imax        -
+IIV-IC50        -
+IIV-Kout        -               
+IIV-SDMA0       29.1    0.084
+RUV (add)       -       0.0146
+
+Correlation     r       cov [cov = r * sqrt(var1*var2)] #* included for reference, not in model
+CL-Vc                   0.01 
+=#
+
 (; 
     mdl = @model begin
 

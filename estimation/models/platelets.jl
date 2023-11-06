@@ -1,3 +1,27 @@
+##################################################################
+# Initial estimates
+##################################################################
+#=
+PD-Safety (Platelets)  ----------------
+Fixed Effects   θ       Estimate    Units
+tvmtt           1       134         hr
+tvslope         2       0.00496
+tvgamma         3       0.217
+tvplt0          4       232         10⁹/L
+
+Random Effects  CV%     VAR
+IIV-MTT         -
+IIV-Slope       52.2    0.272
+IIV-Gamma       46.9    0.22
+IIV-PLT0        28.3    0.08
+RUV (exp)               0.0235
+
+Correlation     r       cov [cov = r * sqrt(var1*var2)] #* included for reference, not in model
+Slope-Gamma             0.01 
+Slope-PLT0              0.01
+Gamma-PLT0              0.01
+=#
+
 (; 
     mdl = @model begin
 
