@@ -4,6 +4,7 @@
 using Pumas, PumasPlots, PumasUtilities
 using DataFramesMeta, Dates, CSV, Serialization
 using CairoMakie, AlgebraOfGraphics
+
 ##################################################################
 # Comment Key
 ##################################################################
@@ -21,7 +22,8 @@ FIXME: thing that needs to be fixed that may affect script
 # Estimate PK Params
 ##################################################################
 # import datset
-trialdf = deserialize("data/trial_data.jls")
+#//trialdf = deserialize("data/trial_data.jls")
+trialdf = CSV.read("data/trial_data.csv", DataFrame; stringtype = String)
 
 # import pk estimation model
 #* string path in include() is based on location of current file, not result of pwd()
@@ -39,7 +41,6 @@ pkpop = @chain trialdf begin
         _,
         observations = [:dv],
         covariates = [:tdd, :freqn]
-        # TODO: add time-varying covariate if time permits
     )
 end
 
@@ -48,8 +49,7 @@ findinfluential(
     pkmdl,
     pkpop,
     init_params(pkmdl),
-    Pumas.FOCE();
-    k = length(pkpop)
+    Pumas.FOCE()
 )
 
 # fit model
@@ -62,16 +62,20 @@ pkfit = fit(
 
 #* dataframe of pk values with posthoc pk param estimates from inspect() used for sequential fitting
 pkdf = @chain DataFrame(inspect(pkfit)) begin
-    select(:id, :evid, :time, :cl => :cli, :vc => :vci, :q => :qi, :vp => :vpi, :ka => :kai, :bioav_depot => :fi)
+    #* id in pkfit is a STRING and must be converted back to Int64 to match trialdf for join
+    transform(:id => ByRow(i -> parse(Int64, i)); renamecols = false)
+    select(:id, :evid, :time, :cl => :cli, :vc => :vci, :q => :qi, :vp => :vpi, :ka => :kai, :bioav_depot => :fsi)
     leftjoin(trialdf, _, on = [:id,:time,:evid])
     sort([:id, :time, order(:evid, rev = true)])
 end
 
+
 ##################################################################
 # Estimate PD (SDMA) Params
 ##################################################################
-# import sdma estimation model
-sdmamdl = include("models/sdma.jl").mdl
+#* import sdma NTP which has keys for model and initial params!
+#* differs from how PK was imported to specify initial params separately
+sdma = include("models/sdma.jl")
 
 # create Population for fitting
 # ? this isn't returning a Population, just a vector of subjects, why?
@@ -85,26 +89,29 @@ sdmapop = @chain pkdf begin
     read_pumas(
         _,
         observations = [:sdma],
-        covariates = [:tdd, :freqn, :cli, :vci, :qi, :vpi, :kai, :fi],
+        covariates = [:tdd, :freqn, :cli, :vci, :qi, :vpi, :kai, :fsi],
         # ? Do the individual post-hoc estimates need to be treated as time-varying? 
         covariates_direction = :right
     )
 end;
 
 # check whether first step of estimation process will execute successfully
+#! Remove outer #= =# to run
+#=
 findinfluential(
-    sdmamdl,
+    sdma.mdl,
     sdmapop,
-    init_params(sdmamdl),
-    Pumas.FOCE();
-    k = length(sdmapop)
+    sdma.params1,
+    Pumas.FOCE()
 )
+=#
 
 # fit model
+#* not use of sdma.mdl and sdma.params1 instead of init_params(sdma.mdl)
 sdmafit = fit(
-    sdmamdl,
+    sdma.mdl,
     sdmapop,
-    init_params(sdmamdl),
+    sdma.params1,
     Pumas.FOCE()
 )
 
@@ -125,20 +132,22 @@ pltpop = @chain pkdf begin
     read_pumas(
         _,
         observations = [:plt],
-        covariates = [:tdd, :freqn, :cli, :vci, :qi, :vpi, :kai, :fi],
+        covariates = [:tdd, :freqn, :cli, :vci, :qi, :vpi, :kai, :fsi],
         # ? Do the individual post-hoc estimates need to be treated as time-varying? 
         covariates_direction = :right
     )
 end;
 
 # check whether first step of estimation process will execute successfully
+#! Remove outer #= =# to run
+#=
 findinfluential(
     pltmdl,
     pltpop,
     init_params(pltmdl),
-    Pumas.FOCE();
-    k = length(pltpop)
+    Pumas.FOCE()
 )
+=#
 
 # fit model
 pltfit = fit(
@@ -148,9 +157,25 @@ pltfit = fit(
     Pumas.FOCE()
 )
 
+
+##################################################################
+# Combine and Export Final Paramters Estimate for Simulation
+##################################################################
+#* coef(fpm) gives NamedTuple of final param estimates
+#* "Comprehension" [fxn(x) for x in vector] always returns an array
+#* merge() used to combine multiple ntps but first need them out of the array
+#* Splat operator (...) converts [ntp1, ntp2, ntp3] into ntp1, ntp2, ntp3
+final_estimates = merge([coef(fpm) for fpm in [pkfit, sdmafit, pltfit]]...);
+
+#* export final_estimates for use in simulations
+CSV.write("simulation/template/final_estimates.csv", DataFrame([final_estimates]));
+
+
 ##################################################################
 # Export Fits
 ##################################################################
+#=
+#! Remove outer #= =# to run
 # parent out directory based on current UTC datetime
 OUTDIR = joinpath("estimation/fits/",string(now(Dates.UTC))[begin:end-4]);
 
@@ -187,3 +212,4 @@ for (i, j) in zip([pkfit, sdmafit, pltfit], ["pk", "sdma", "plt"])
         @info "Could not serialize fit!"
     end
 end
+=#

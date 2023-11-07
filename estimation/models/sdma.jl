@@ -1,22 +1,19 @@
 ##################################################################
-# Initial estimates
+# PD-Efficacy (SDMA) Initial Estimates
 ##################################################################
 #=
-PD-Efficacy (SDMA) --------------------
+
 Fixed Effects   θ       Estimate    Units
-tvimax          1       0.823   
-tvic50          2       0.425       ng/mL = μg/L
-tvkout          3       0.00708     hr⁻¹
-sdma0           4       113         ng/mL = μg/L
+tvimax          1       0.9  
+tvic50          2       2           ng/mL = μg/L
+tvkout          3       0.03        hr⁻¹
+sdma0           4       120         ng/mL = μg/L
 
-Random Effects  CV%     VAR
-IIV-Imax        -
-IIV-IC50        -
-IIV-Kout        -               
-IIV-SDMA0       29.1    0.084
-RUV (add)       -       0.0146
+Random Effects  CV%     VAR            
+IIV-SDMA0       -       -
+RUV (add)       -       0.1
 
-Correlation     r       cov [cov = r * sqrt(var1*var2)] #* included for reference, not in model
+Correlation     r       COV [cov = r * sqrt(var1*var2)] #* included for reference, not in model
 CL-Vc                   0.01 
 =#
 
@@ -30,15 +27,15 @@ CL-Vc                   0.01
             tvkout ∈ RealDomain(lower = 0.0001, init = 0.03)
             tvsdma0 ∈ RealDomain(lower = 0.0001, init = 120)
 
-            Ω ∈ PDiagDomain(1)
+            ωsdma0 ∈ RealDomain(lower = 0, init = 0.2)
             σ²sdma ∈ RealDomain(lower=0.0001, init = 0.1)
         end
 
         @random begin
-            η ~ MvNormal(Ω)
+            ηsdma0 ~ Normal(0, ωsdma0)
         end
 
-        @covariates tdd freqn cli vci qi vpi kai fi
+        @covariates tdd freqn cli vci qi vpi kai fsi
 
         @pre begin
             # PK
@@ -52,14 +49,14 @@ CL-Vc                   0.01
             imax = tvimax
             ic50 = tvic50
             kout = tvkout
-            sdma0 = tvsdma0*exp(η[1])
+            sdma0 = tvsdma0*exp(ηsdma0)
             kin = sdma0*kout
         end
 
         @dosecontrol begin
             # F is both time- and dose-dependent
-            f = fi
-            bioav = (; depot = f)
+            fs = fsi
+            bioav = (; depot = fs)
         end
 
         @init begin
@@ -77,9 +74,18 @@ CL-Vc                   0.01
         end
 
         @derived begin
-            # SDMA
+            # (ng/mL)
             sdma ~ @. LogNormal(log(defsdma), sqrt(σ²sdma))
         end
 
     end
+    ,
+    params1 = (
+        tvimax = 0.9,
+        tvic50 = 2,
+        tvkout = 0.03,
+        tvsdma0 = 120,
+        ωsdma0 = 0.2,
+        σ²sdma = 0.1
+    )
 )

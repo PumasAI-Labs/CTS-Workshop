@@ -1,22 +1,20 @@
 ##################################################################
-# Initial estimates
+# PD-Safety (Platelets) Initial Estimates
 ##################################################################
 #=
-PD-Safety (Platelets)  ----------------
 Fixed Effects   θ       Estimate    Units
-tvmtt           1       134         hr
-tvslope         2       0.00496
-tvgamma         3       0.217
-tvplt0          4       232         10⁹/L
+tvmtt           1       100         hr
+tvslope         2       0.003
+tvgamma         3       0.1
+tvplt0          4       200         10⁹/L
 
 Random Effects  CV%     VAR
-IIV-MTT         -
-IIV-Slope       52.2    0.272
-IIV-Gamma       46.9    0.22
-IIV-PLT0        28.3    0.08
-RUV (exp)               0.0235
+IIV-Slope       -       -
+IIV-Gamma       -       -
+IIV-PLT0        -       -
+RUV (exp)               0.1
 
-Correlation     r       cov [cov = r * sqrt(var1*var2)] #* included for reference, not in model
+Correlation     r       COV [cov = r * sqrt(var1*var2)] #* included for reference, not in model
 Slope-Gamma             0.01 
 Slope-PLT0              0.01
 Gamma-PLT0              0.01
@@ -29,18 +27,22 @@ Gamma-PLT0              0.01
             # Safety (Platelets)
             tvmtt ∈ RealDomain(lower = 0.0001, init = 100)
             tvslope ∈ RealDomain(lower = 0.0001, init = 0.003)
-            tvgamma ∈ RealDomain(lower = 0.0001, init = 0.1)
+            tvγ ∈ RealDomain(lower = 0.0001, init = 0.1)
             tvcirc0 ∈ RealDomain(lower = 0.0001, init = 200)
 
-            Ω ∈ PDiagDomain(3)
+            ωslope ∈ RealDomain(lower = 0, init = 0.2)
+            ωγ ∈ RealDomain(lower = 0, init = 0.2)
+            ωcirc0 ∈ RealDomain(lower = 0, init = 0.2)
             σ²plt ∈ RealDomain(lower=0.0001, init = 0.1)
         end
 
         @random begin
-            η ~ MvNormal(Ω)
+            ηslope ~ Normal(0, ωslope)
+            ηγ ~ Normal(0, ωγ)
+            ηcirc0 ~ Normal(0, ωcirc0)
         end
 
-        @covariates tdd freqn cli vci qi vpi kai fi
+        @covariates tdd freqn cli vci qi vpi kai fsi
 
         @pre begin
             # PK
@@ -55,15 +57,15 @@ Gamma-PLT0              0.01
             ktr = 4/mtt
             kprol = ktr
             kcirc = ktr
-            slope = tvslope * exp(η[1])
-            γ = tvgamma * exp(η[2])
-            circ0 = tvcirc0 * exp(η[3])
+            slope = tvslope * exp(ηslope)
+            γ = tvγ * exp(ηγ)
+            circ0 = tvcirc0 * exp(ηcirc0)
         end
 
         @dosecontrol begin
             # F is both time- and dose-dependent 
-            f = fi
-            bioav = (; depot = f)
+            fs = fsi
+            bioav = (; depot = fs)
         end
 
         @init begin
@@ -79,6 +81,7 @@ Gamma-PLT0              0.01
             depot' = -ka*depot
             central' =  ka*depot - (cl+q)/vc*central + q/vp*peripheral
             peripheral' = q/vc*central - q/vp*peripheral
+            
             # Drug effect on Platelets (Friberg)
             prol' = kprol*prol * (1-(slope*central/vc)) * (circ0/(circ+1))^γ - ktr*prol
             tran1' = ktr*prol - ktr*tran1
