@@ -3,7 +3,7 @@
 ##################################################################
 using Pumas
 using Serialization, StableRNGs, Random, StatsBase
-using DataFramesMeta, Dates, ShiftedArrays, CategoricalArrays
+using DataFramesMeta, CSV, Dates, ShiftedArrays, CategoricalArrays
 using CairoMakie, AlgebraOfGraphics
 
 ##################################################################
@@ -33,17 +33,19 @@ ADJ6MG = (
     REPRODUCIBLE = true, # flag for whether seed should be set to make sim results reproducible
 );
 
-# Early safety evaluation with immediate dose adjustment for G2 AE
-EARLY6MG = (; ADJ6MG..., SKIP_CDAY7 = false);
-
-# Lower starting dose (4 mg PO q24h) with dose adjustment based on safety/efficacy
-ADJ4MG = (; ADJ6MG..., INIT_REG = (AMT = 4.0, TIME = 0, II = 24, ADDL = 6));
-
 ##################################################################
 #* Import Model(s)
 ##################################################################
 # import ntp that always includes model (mdl) and can include optional param sets
 combined_pkpd = include("models/combined_pkpd.jl");
+
+##################################################################
+#* Import Final Parameter Estimates
+##################################################################
+#* Params must be passed as a NamedTuple, CSV.read returns a df
+#* Tables.rowtable() returns a vector of NamedTuples
+#* Because there's a single row, [begin] will gives us the ntp we need
+final_estimates = Tables.rowtable(CSV.read(joinpath(@__DIR__, "final_estimates.csv"), DataFrame))[begin];
 
 ##################################################################
 #* Load Simulation Functions and Data
@@ -53,23 +55,27 @@ include("utils/sim_functions.jl")
 
 
 ##################################################################
-# Multiple Scenarios (N=500)
+# Simulate Scenarios
 ##################################################################
+# Set number of subjects to simulate in each scenario
+subjects_to_sim = 500;
+
 # empty dataframe to sim info and results
-mysims = DataFrame()
+mysims = DataFrame();
 
 # tags that can used to identify each run later if desired
 tags = [
-    "adj_3c_cd1528_6mg",
-    "adj_3c_cd71528_6mg",
-    "adj_3c_cd1528_4mg"
+
 ];
 
 # labels used when stratifying tables/plots by sim
 labels = [
-    "ADJ6MG*",
-    "EARLY6MG",
-    "ADJ4MG"
+
+];
+
+# scenarios to be used
+scenarios = [
+
 ];
 
 # add required columns to df
@@ -77,15 +83,16 @@ mysims[!, :runid] = 1:length(tags);
 mysims[!, :tags] .= tags;
 mysims[!, :labels] .= labels;
 mysims[!, :models] .= Ref((; combined_pkpd));
-mysims[!, :scenarios] .= [ADJ6MG,EARLY6MG,ADJ4MG];
+mysims[!, :params] .= Ref(final_estimates)
+mysims[!, :scenarios] .= scenarios;
 
-# each row contains a df of N patients that will be used as input
+# each row contains a df of N subjects_to_sim that will be used as input
 # models and scenario get added to each row of the patients df in the map below
-# TODO: if time allows, use actual patient population with covariates and include import method
 mysims[!, :patients] = map(eachrow(mysims)) do r
-    df = DataFrame(id = collect(1:500) .+ 10000)
+    df = DataFrame(id = collect(1:subjects_to_sim) .+ 10000)
     df[!, :models] .= Ref(r.models)
     df[!, :scenario] .= Ref(r.scenarios)
+    df[!, :params] .= Ref(r.params)
     return df
 end;
 

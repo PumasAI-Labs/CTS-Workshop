@@ -18,7 +18,8 @@ function sim_profile(pt, regimen)
         sim = simobs(
             pt["models"].combined_pkpd.mdl,
             subj,
-            init_params(pt["models"].combined_pkpd.mdl),
+            #init_params(pt["models"].combined_pkpd.mdl),
+            pt["params"],
             obstimes = collect(1:1:pt["trial_day"]) .* 24
         )
 
@@ -118,6 +119,7 @@ function create_patient_dict(dfr)
         "covariates" => create_covariate_dict(dfr),
         "models" => dfr.models,
         "scenario" => dfr.scenario,
+        "params" => dfr.params
     )
 
     return pt

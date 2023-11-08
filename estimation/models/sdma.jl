@@ -9,9 +9,9 @@ tvic50          2       2           ng/mL = μg/L
 tvkout          3       0.03        hr⁻¹
 sdma0           4       120         ng/mL = μg/L
 
-Random Effects  CV%     VAR            
-IIV-SDMA0       -       -
-RUV (add)       -       0.1
+Random Effects  CV%     VAR         SD            
+IIV-SDMA0       20%     -           0.2
+RUV (add)       -       0.1         0.316
 
 Correlation     r       COV [cov = r * sqrt(var1*var2)] #* included for reference, not in model
 CL-Vc                   0.01 

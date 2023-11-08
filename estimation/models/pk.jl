@@ -10,10 +10,10 @@ tvvp            4       235         L
 tvka            5       2.0         hr⁻¹
 tvfs            6       0.5
 
-Random Effects  CV%     VAR
-IIV-CL          20%     -
-IIV-Vc          20%     -
-IIV-FS          20%     -
+Random Effects  CV%     VAR         SD
+IIV-CL          20%     -           0.2
+IIV-Vc          20%     -           0.2
+IIV-FS          20%     -           0.2
 RUV (exp)               0.1
 =#
 (; 

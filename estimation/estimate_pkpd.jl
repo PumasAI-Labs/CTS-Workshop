@@ -184,6 +184,13 @@ OUTDIR = joinpath("estimation/fits/",string(now(Dates.UTC))[begin:end-4]);
 for (i, j) in zip([pkfit, sdmafit, pltfit], ["pk", "sdma", "plt"])
     @info "Starting $j export!"
     mkpath(joinpath(OUTDIR, j))
+    
+    try
+        CSV.write(joinpath(OUTDIR,j,j*"_inspect.csv"), DataFrame(inspect(i)))
+    catch e
+        @info "Could not generate CoefTable!"
+    end
+    
     # infer step
     try
         CSV.write(joinpath(OUTDIR,j,j*"_coeftable.csv"),coeftable(infer(i)))

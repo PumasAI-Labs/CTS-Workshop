@@ -8,11 +8,11 @@ tvslope         2       0.003
 tvgamma         3       0.1
 tvplt0          4       200         10⁹/L
 
-Random Effects  CV%     VAR
-IIV-Slope       -       -
-IIV-Gamma       -       -
-IIV-PLT0        -       -
-RUV (exp)               0.1
+Random Effects  CV%     VAR         SD
+IIV-Slope       20%     -           0.2
+IIV-Gamma       20%     -           0.2
+IIV-PLT0        20%     -           0.2
+RUV (exp)       -       0.1         -
 
 Correlation     r       COV [cov = r * sqrt(var1*var2)] #* included for reference, not in model
 Slope-Gamma             0.01 

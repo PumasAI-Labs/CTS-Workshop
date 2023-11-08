@@ -81,3 +81,6 @@ docs/site/
 
 # additional files
 scratch.jl
+
+runs/
+results/
