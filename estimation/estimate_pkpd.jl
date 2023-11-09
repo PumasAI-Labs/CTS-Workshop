@@ -49,7 +49,7 @@ findinfluential(
     pkmdl,
     pkpop,
     init_params(pkmdl),
-    Pumas.FOCE()
+    FOCE()
 )
 
 # fit model
@@ -57,7 +57,7 @@ pkfit = fit(
     pkmdl,
     pkpop,
     init_params(pkmdl),
-    Pumas.FOCE()
+    FOCE()
 )
 
 #* dataframe of pk values with posthoc pk param estimates from inspect() used for sequential fitting
@@ -102,7 +102,7 @@ findinfluential(
     sdma.mdl,
     sdmapop,
     sdma.params1,
-    Pumas.FOCE()
+    FOCE()
 )
 =#
 
@@ -112,7 +112,7 @@ sdmafit = fit(
     sdma.mdl, #* ntp syntax
     sdmapop,
     sdma.params1,
-    Pumas.FOCE() #* ntp syntax
+    FOCE() #* ntp syntax
 )
 
 ##################################################################
@@ -142,7 +142,7 @@ findinfluential(
     pltmdl,
     pltpop,
     init_params(pltmdl),
-    Pumas.FOCE()
+    FOCE()
 )
 =#
 
@@ -151,7 +151,7 @@ pltfit = fit(
     pltmdl,
     pltpop,
     init_params(pltmdl),
-    Pumas.FOCE()
+    FOCE()
 )
 
 
