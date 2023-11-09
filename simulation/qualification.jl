@@ -124,6 +124,10 @@ coreqpc = map(zip(inspectdfs, coreparams)) do (idf, param)
 
 end
 
+for p in reduce(vcat, coreqpc)
+    display(p)
+end
+
 ##################################################################
 # Derived QPC
 ##################################################################
@@ -165,6 +169,10 @@ derivedqpc = map(zip(inspectdfs, observedvals)) do (idf, val)
 
 end
 
+for p in reduce(vcat, derivedqpc)
+    display(p)
+end
+
 ##################################################################
 # Endpoint QPC
 ##################################################################
@@ -186,5 +194,7 @@ refvalue = quantile(obsval[!,:sdmaredbl], 0.5)
 plt = plot_qpc(refq50, q5, q50, q95, refvalue, "50th Percentile for SDMA Reduction from BL")
 
 
+names(obsval) |> println
 
 
+filter(df -> df.time == 360.001 && df.evid == 0 && df.tdd == 6 && df.freqn == 24, pltidf)

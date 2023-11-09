@@ -22,16 +22,16 @@
 
 ## Rationale
 
-* The original case study chose 6mg PO q24h because it provided a reasonable balance of target attainment (76%) and toxicity (G3 AE; 30%).
+* The original case study chose 6mg PO q24h because it provided a reasonable balance of target attainment (76%) versus toxicity (G3 AE; 30%).
 * However, all subjects were given the same dose of PF06 without an opportunity to modify their dose based upon either PD response (SDMA or PLT).
 * It's possible that allowing for dose modification could increase the probability of target attainment while further minimizing the risk of serious adverse events.
 * Note: this is a commonly encountered, difficult-to-answer question from Phase 1B/Phase 2 drug development.
 
 ## Decision
-* To use, or not to use adaptive dosing for subjects receiving PF06?
+* To use, or not to use, adaptive dosing for subjects receiving PF06 in the Phase 3 trial?
 
 ## Key Questions
-1. What are the predicted outcomes (safety, efficacy) for 4-8mg PO q24h regimens without dose adjustment?
+1. What are the predicted outcomes (safety, efficacy) for 6mg PO q24h regimens without dose adjustment?
 2. Can the predicted benefit/risk profile be improved by starting at 6 mg PO q24h while allowing for dose adjustment based upon outcomes?
-3. Would a lower starting dose (4 mg PO q24h) in combination with dose adjustment further alter the predicted benefit/risk profile?
+3. Would a lower starting dose (4 mg PO q24h) in combination with dose adjustment improve the predicted benefit/risk profile?
 4. Would early safety evaluation (cycle day 7) in addition to cycle day 15 prevent subjects from experiencing more severe AEs?

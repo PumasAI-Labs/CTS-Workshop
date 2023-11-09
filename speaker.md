@@ -7,7 +7,7 @@
 
 ## README.md
 
-* Introduction section
+* Introduction and Objectives
 
 ## program_description.md
 
@@ -36,3 +36,54 @@
 * Talk about automatic export of key diagnostics and how to save fits (to serialize or not)
 
 
+# Day 2 - Overview and Outline (60 minutes)
+
+## LucidChart - Outline
+* Estimation block
+
+## README.md
+* CTS exercise section
+
+## LucidChart - Outline
+* Remaining blocks
+* Return to Sim Engine block and pivot to workflow
+
+## LucidChart - Workflow
+* Translate execution into a workflow via diagram
+* Draw initial trial design manually
+* Use layers to build in the remaining items
+
+# Day 2 - Coding the Workflow
+
+## code_guidelines.md
+
+## pseudo_sim_trial.jl
+
+## sim_functions.jl
+* sim_trial
+* sim_profile
+* evaluate_patient
+
+## LucidChart - Functions
+
+## LucidChart - Simulation
+
+# Day 2 - Qualification (30 minutes)
+
+## single_patient.jl
+
+## setup_sim_run.jl
+* Qualification run, 10000 subjects
+
+## qualification.jl
+* Review QPC
+* Use qualification profiles to answer first key question
+
+# Day 2 - Execution (30 minutes)
+
+## setup_sim_run.jl
+* ADJ6MG
+* EARLY6MG
+* ADJ4MG
+
+# Day 2 - Post Processing (30 minutes)
