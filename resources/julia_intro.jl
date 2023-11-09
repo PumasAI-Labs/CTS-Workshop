@@ -1,16 +1,15 @@
 #=
-Author: Haden Bunn
-Description: This script is a collection of notes that I've added to each time I've encountered and overcome challenges in my code. Not a full tutorial, but should pair well with the basics course we offer.
+This script is a collection of notes that I've added to each time I've encountered and overcome challenges in my code. 
+It's not a full tutorial, but should pair well with the basics course we offer.
 
 =#
 
-typeof()
+typeof() # gives you the type of a given object which can be useful for troublshooting
 varinfo() # lists all variables in current workspace
 
 ##################################################################
 # Numbers
 ##################################################################
-
 # integer
 typeof(1)
 
@@ -33,11 +32,11 @@ Int(1.0)
 
 # float logic can be weird when math gets invovled
 # 0.1 + 0.2 = 0.3, right?
-0.1 + 0.2 == 0.3 # FALSE, wait what?
+0.1 + 0.2 == 0.3 # FALSE
 # check it without the equality and see that, from Julia's perspective, 0.1 + 0.2 isn't 0.3
 0.1 + 0.2 # keep this in mind when using conditional logic
 
-# round number to x decimal (here its 1)
+# round number to x decimal places (here its 1)
 round(3.135, digits = 1)
 # can also force it to round up or down if needed
 round(3.135, digits = 1, RoundUp) # rounds up
@@ -169,7 +168,7 @@ reverse(s)
 # Regular Expressions
 ##################################################################
 
-# This part is admittedly a little advanced, but incredibly powerful and worth glancing
+# This part is a little advanced, but incredibly powerful and worth glancing
 # over just so you know it exists as an option. It's all about pattern matching 
 # and extracting info from messy data
 #=

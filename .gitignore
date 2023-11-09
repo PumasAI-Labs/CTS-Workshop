@@ -1,6 +1,6 @@
 ### Data ###
-data/
-*.csv
+#data/
+#*.csv
 *.xlsx
 *.xpt
 *.sas7bdat
@@ -83,4 +83,4 @@ docs/site/
 scratch.jl
 
 #runs/
-results/
+#results/

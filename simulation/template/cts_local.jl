@@ -60,6 +60,9 @@ include("utils/sim_functions.jl")
 # Set number of subjects to simulate in each scenario
 subjects_to_sim = 500;
 
+# Set number of cycles to simulate
+ncycles = 3;
+
 # empty dataframe to sim info and results
 mysims = DataFrame();
 
@@ -99,7 +102,7 @@ end;
 #* perform simulations
 mysims[!, :sims] = map(eachrow(mysims)) do r
     map(eachrow(r.patients)) do subr
-        return sim_trial(subr, 3);
+        return sim_trial(subr, ncycles);
     end
 end;
 

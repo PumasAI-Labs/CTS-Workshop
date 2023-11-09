@@ -23,3 +23,19 @@ SIMULATION                      (scripts for simulation and post-processing)
 ```
 
 # Execution
+
+1. Set working directory to parent CTS folder.
+2. Verify that `trial_data.csv` available on `data` folder.
+3. Run `estimation/estimate_pkpd.jl`
+4. Review key diagnostic plots found in `estimation/fits/datetime_run_was_started`.
+5. In REPL, type `include("simulation/setup_sim_run.jl")`.
+6. Go to newly created folder in `simulation/runs/datetime_setup_was_called`.
+7. If running locally, edit and run `simulation/runs/datetime_setup_was_called/cts_local.jl`.
+8. Verify that `OUTDIR` remain unchanged and corresponds to `DateTime` folder of current run.
+9. Open `simulation/runs/datetime_setup_was_called/postprocess_cts.jl` and either run interactively or run entire script (alternatively: can also use `include()` as above to run entire file assuming `OUTDIR` remains unchanged.)
+10. Can use `simulation/runs/datetime_setup_was_called/output_summary.jmd` to get a html document with key outputs by running the following in the REPL
+```
+using Weave;
+
+weave("simulation/runs/datetime_setup_was_called/output_summary.jmd", mod=Main)
+```

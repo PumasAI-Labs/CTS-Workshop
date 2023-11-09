@@ -4,21 +4,21 @@
 #=
 PK (PF-06939999) ----------------------
 Fixed Effects   θ       Estimate    Units
-tvcl            1       10.7        L/hr
-tvvc            2       170         L
-tvq             3       27.2        L/hr
-tvvp            4       301         L
-tvka            5       2.37        hr⁻¹
+tvcl            1       9.2         L/hr
+tvvc            2       214         L
+tvq             3       29.3        L/hr
+tvvp            4       307         L
+tvka            5       2.46        hr⁻¹
 tvfs            6       0.73
 
 Random Effects  CV%     VAR         SD
-IIV-CL          28.4    -           0.284
-IIV-Vc          61.4    -           0.614
+IIV-CL          45.9    -           0.459
+IIV-Vc          73.7    -           0.737
 IIV-Q           -       -
 IIV-Vp          -       -
 IIV-ka          -       -
-IIV-FS          73.3    -           0.733
-RUV (exp)       -       0.103
+IIV-FS          73.1    -           0.731
+RUV (exp)       -       0.112
 
 PD-Efficacy (SDMA) --------------------
 Fixed Effects   θ       Estimate

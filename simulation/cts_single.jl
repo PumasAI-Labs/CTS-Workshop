@@ -30,16 +30,16 @@ ADJ6MG = (
 #* Import Model(s)
 ##################################################################
 # import ntp that always includes model (mdl) and can include optional param sets
-combined_pkpd = include("models/combined_pkpd.jl");
+combined_pkpd = include("template/models/combined_pkpd.jl");
 
 ##################################################################
 #* Load Simulation Functions and Data
 ##################################################################
 # load simulation functions
-include("sim_functions.jl")
+include("template/sim_functions.jl")
 
 ##################################################################
-# Single Test Patient
+#* Single Test Patient
 ##################################################################
 
 # sim_trial takes a DataFrameRow as its first positional argument

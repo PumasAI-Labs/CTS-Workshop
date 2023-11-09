@@ -7,15 +7,18 @@ using DataFramesMeta, CSV, ShiftedArrays, CategoricalArrays
 using CairoMakie, AlgebraOfGraphics
 
 ##################################################################
-# Helper Functions
+# Confirm or Set OUTDIR
 ##################################################################
-OUTDIR = "results/2023-11-04T20:00:47"
+#! If OUTDIR has changed set to appropriate DIR by using relative path
+#! for result folder of interest
+
+#OUTDIR = "2023-11-04T20:00:47"
 
 ##################################################################
 # Explore Structure of Results
 ##################################################################
 # final df
-mysims = deserialize("results/mysims.jls")
+mysims = deserialize(joinpath("results",OUTDIR,"mysims.jls"))
 
 # each row of sims contains an array of 5000 patients
 #mysims.sims[1] #* first set of 5000 patients
@@ -123,7 +126,7 @@ select!(
     transform([:enrolled,:N,:pct] => ByRow((e,n,p) -> "$p% ($e/$n)") => :value)
     select(:runlabel, :cycle, :value)
     unstack(_, :runlabel, :value)
-    @aside CSV.write(joinpath(OUTDIR,"subjects_on_study.csv"), _)
+    @aside CSV.write(joinpath("results",OUTDIR,"subjects_on_study.csv"), _)
     println
 end
 
@@ -157,8 +160,7 @@ plotdf = @chain profiles begin
     transform([:nointerrupts, :endpoint] .=> categorical; renamecols = false)
 end
 
-# TODO: Decouple y-axis upper (platelets) and lower (SDMA) facet
-#? Should this be written in Makie?
+
 plt = data(plotdf) * 
     mapping(
         :week => "Time (Weeks)",
@@ -197,7 +199,7 @@ fig = draw(
 )
 
 # save current figure
-save(joinpath(OUTDIR, "pd_over_time.png"), fig)
+save(joinpath("results",OUTDIR, "pd_over_time.png"), fig)
 
 ##################################################################
 #* Proportion of patients experiencing CIT at any point by cycle and grade 
@@ -212,7 +214,7 @@ save(joinpath(OUTDIR, "pd_over_time.png"), fig)
     combine(groupby(_, :runlabel), :N => Int ∘ mean => :N, :iscit => sum => :iscit)
     transform([:iscit, :N] => ByRow((np,n) -> "$(round(100*(np/n), digits =1))% ($np/$n)") => :pct)
     select(:runlabel, :pct)
-    @aside CSV.write(joinpath(OUTDIR,"patients.csv"), _)
+    @aside CSV.write(joinpath("results",OUTDIR,"patients.csv"), _)
     println
 end
 
@@ -261,7 +263,7 @@ fig = draw(
 )
 
 # save current figure
-save(joinpath(OUTDIR, "incidence_cit_barplot.png"), fig)
+save(joinpath("results",OUTDIR, "incidence_cit_barplot.png"), fig)
 
 ##################################################################
 #* Incidence of AEs by Cycle and Grade - RAINCLOUD
@@ -308,7 +310,7 @@ end
 for (i,j) in enumerate([:timeg1, :timeg2, :timeg3])
     fig = plot_cit_distribution(plotdf, j, i)
     display(fig)
-    save(joinpath(OUTDIR, "incidence_g$(i)cit_raincloud.png"), fig)
+    save(joinpath("results",OUTDIR, "incidence_g$(i)cit_raincloud.png"), fig)
 end
 
 
@@ -326,7 +328,7 @@ end
     combine(groupby(_, [:runlabel]), :N => Int ∘ mean => :N, :interrupt => sum => :npatients)
     transform([:npatients, :N] => ByRow((np,n) -> "$(round(100*(np/n), digits =1))% ($np/$n)") => :pct)
     select(:runlabel, :pct)
-    @aside CSV.write(joinpath(OUTDIR,"subjects_g3cit.csv"), _)
+    @aside CSV.write(joinpath("results",OUTDIR,"subjects_g3cit.csv"), _)
     println
 end
 
@@ -373,7 +375,7 @@ fig = draw(
 )
 
 # save current figure
-save(joinpath(OUTDIR, "recovery_time_g3cit.png"), fig)
+save(joinpath("results",OUTDIR, "recovery_time_g3cit.png"), fig)
 
 ##################################################################
 #* Percentage of subjects Experiencing G4 CIT
@@ -388,7 +390,7 @@ save(joinpath(OUTDIR, "recovery_time_g3cit.png"), fig)
     transform([:npatients, :N] => ByRow((np,n) -> "$(round(100*(np/n), digits =1))% ($np/$n)") => :pct)
     select(:runlabel, :cycle, :pct)
     unstack(_, :runlabel, :pct)
-    @aside CSV.write(joinpath(OUTDIR,"subjects_g4cit.csv"), _)
+    @aside CSV.write(joinpath("results",OUTDIR,"subjects_g4cit.csv"), _)
     println
 end
 
@@ -435,7 +437,7 @@ fig = draw(
 )
 
 # save current figure
-save(joinpath(OUTDIR, "subjects_at_sdma_target.png"), fig)
+save(joinpath("results",OUTDIR, "subjects_at_sdma_target.png"), fig)
 
 ##################################################################
 #*  Achievement of SDMA target by cycle and scenario
@@ -473,7 +475,7 @@ end;
 finaltbl = vcat(responders, nonresponders)
 finaltbl
 # save table
-CSV.write(joinpath(OUTDIR, "sdma_target_by_scenario.csv"), finaltbl)
+CSV.write(joinpath("results",OUTDIR, "sdma_target_by_scenario.csv"), finaltbl)
 
 ##################################################################
 #* Summary of number of cycles at SDMA target by scenario
@@ -526,56 +528,12 @@ colors = cgrad(:seaborn_colorblind, 5, categorical = true)
 rainclouds!(a, string.(plotdf.runlabel), plotdf.timeabovegoal; color = colors[levelcode.(plotdf.runlabel)])
 
 # save current figure
-save(joinpath(OUTDIR, "time_above_target.png"), f)
+save(joinpath("results",OUTDIR, "time_above_target.png"), f)
 
 
 ##################################################################
 #* Distribution of Doses Per Cycle
 ##################################################################
-
-#? decide whether this should be done in Makie
-# TODO: stacked area chart?
-# TODO: emphasize 0 line (will require makie)
-#=
-function plot_dosing(obs, ysym, filter_vars)
-
-    size_in_inches = (6.5, 4.35)
-    dpi = 300
-    size_in_pixels = size_in_inches .* dpi
-    
-    # set color gradient
-    colors = cgrad(:viridis, 5, categorical=true)
-
-    # plot object
-    plt = data(filter(df -> df.scenario ∈ filter_vars, obs)) *
-        mapping(:week => "Week", ysym => "Percent"; color = :new_dose => nonnumeric => "", layout = :scenario) *
-        visual(Lines;)
-
-    # draw plot
-    draw(plt;
-        figure = (;
-            resolution = size_in_pixels,
-            fontsize = 20,
-            colgap = 10
-        ),
-        axis = (;
-            xticks = [0,12,24,36,52,76,104],
-            ylabelfont = "TeX Gyre Heros Bold Makie",
-            xlabelfont = "TeX Gyre Heros Bold Makie"
-        ),
-        legend = (;
-            position = :bottom,
-            titleposition = :left,
-            framevisible = false,
-            padding = 0
-        ),
-        palettes = (;
-            color = colors
-        )
-    )
-
-end
-=#
 
 plotdf = @chain events begin
     filter(df -> df.cycle_day == 28 || (df.cycle == 1 && df.cycle_day == 0), _)
@@ -618,7 +576,7 @@ fig = draw(
 )
 
 # save current figure
-save(joinpath(OUTDIR, "dose_distribution_by_cycle.png"), fig)
+save(joinpath("results",OUTDIR, "dose_distribution_by_cycle.png"), fig)
 
 
 

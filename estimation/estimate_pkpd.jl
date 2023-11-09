@@ -22,7 +22,6 @@ FIXME: thing that needs to be fixed that may affect script
 # Estimate PK Params
 ##################################################################
 # import datset
-#//trialdf = deserialize("data/trial_data.jls")
 trialdf = CSV.read("data/trial_data.csv", DataFrame; stringtype = String)
 
 # import pk estimation model
@@ -32,11 +31,12 @@ pkmdl = include("models/pk.jl").mdl
 # create Population for fitting
 pkpop = @chain trialdf begin
     # pumas won't allow evid=0 and dv=0 or dv=missing; error on fit unless these rows are removed
-    # took care of this by simulating at 0.001 instead of 0, but keep it in mind for future datasets
+    # took care of this by adding small offset (0.001) instead of 0, but keep it in mind for future datasets
     #//filter(df -> !(df.evid == 0 && df.time == 0), _) # uncomment to run
     #* PLT was collected on Day 15 when Cycle > 1 while PK and SDMA weren't. This means dv/sdma are
     #* missing at those timepoints and need to be removed prior to fitting
     filter(df -> !ismissing(df.dv) || df.evid == 1, _)
+    #* key cols like (id, amt, :time) are named will be picked up automatically if named appropriately
     read_pumas(
         _,
         observations = [:dv],
@@ -64,8 +64,10 @@ pkfit = fit(
 pkdf = @chain DataFrame(inspect(pkfit)) begin
     #* id in pkfit is a STRING and must be converted back to Int64 to match trialdf for join
     transform(:id => ByRow(i -> parse(Int64, i)); renamecols = false)
+    #* select used to reorder and rename select param cols to parami (e.g., vp => vpi)
     select(:id, :evid, :time, :cl => :cli, :vc => :vci, :q => :qi, :vp => :vpi, :ka => :kai, :bioav_depot => :fsi)
     leftjoin(trialdf, _, on = [:id,:time,:evid])
+    #* reverse the order of the sort on evid so that doses come first
     sort([:id, :time, order(:evid, rev = true)])
 end
 
@@ -73,16 +75,14 @@ end
 ##################################################################
 # Estimate PD (SDMA) Params
 ##################################################################
-#* import sdma NTP which has keys for model and initial params!
-#* differs from how PK was imported to specify initial params separately
+#! import sdma NTP which has keys for model and initial params!
+#! differs from how PK was imported to specify initial params separately
 sdma = include("models/sdma.jl")
 
 # create Population for fitting
-# ? this isn't returning a Population, just a vector of subjects, why?
 sdmapop = @chain pkdf begin
     # pumas won't allow evid=0 and dv=0 or dv=missing; error on fit unless these rows are removed
     # took care of this by simulating at 0.001 instead of 0, but keep it in mind for future datasets
-    #//filter(df -> !(df.evid == 0 && df.time == 0), _) # uncomment to run
     #* As above, SDMA was collected at fewer timepoints than PK and because all obs come from the same
     #* dataframe the missing values need to be filtered out before calling read_pumas
     filter(df -> !ismissing(df.sdma) || df.evid == 1, _)
@@ -90,8 +90,8 @@ sdmapop = @chain pkdf begin
         _,
         observations = [:sdma],
         covariates = [:tdd, :freqn, :cli, :vci, :qi, :vpi, :kai, :fsi],
-        # ? Do the individual post-hoc estimates need to be treated as time-varying? 
-        covariates_direction = :right
+        #? Do the individual post-hoc estimates need to be treated as time-varying? 
+        #covariates_direction = :right
     )
 end;
 
@@ -107,12 +107,12 @@ findinfluential(
 =#
 
 # fit model
-#* not use of sdma.mdl and sdma.params1 instead of init_params(sdma.mdl)
+#! note use of sdma.mdl and sdma.params1 instead of init_params(sdma.mdl)
 sdmafit = fit(
-    sdma.mdl,
+    sdma.mdl, #* ntp syntax
     sdmapop,
     sdma.params1,
-    Pumas.FOCE()
+    Pumas.FOCE() #* ntp syntax
 )
 
 ##################################################################
@@ -122,19 +122,16 @@ sdmafit = fit(
 pltmdl = include("models/platelets.jl").mdl
 
 # create Population for fitting
-# ? As above, this isn't returning a population, it's a vector of subjects
 pltpop = @chain pkdf begin
     # pumas won't allow evid=0 and dv=0 or dv=missing; error on fit unless these rows are removed
     # took care of this by simulating at 0.001 instead of 0, but keep it in mind for future datasets
-    #//filter(df -> !(df.evid == 0 && df.time == 0), _) # uncomment to run
     #* Same issue regarding missing observations as above
     filter(df -> !ismissing(df.plt) || df.evid == 1, _)
     read_pumas(
         _,
         observations = [:plt],
         covariates = [:tdd, :freqn, :cli, :vci, :qi, :vpi, :kai, :fsi],
-        # ? Do the individual post-hoc estimates need to be treated as time-varying? 
-        covariates_direction = :right
+        #covariates_direction = :right
     )
 end;
 
@@ -159,11 +156,11 @@ pltfit = fit(
 
 
 ##################################################################
-# Combine and Export Final Paramters Estimate for Simulation
+# Combine and Export Final Paramters Estimates for Simulation
 ##################################################################
 #* coef(fpm) gives NamedTuple of final param estimates
 #* "Comprehension" [fxn(x) for x in vector] always returns an array
-#* merge() used to combine multiple ntps but first need them out of the array
+#* merge() used to combine multiple ntps, but first need them out of the array
 #* Splat operator (...) converts [ntp1, ntp2, ntp3] into ntp1, ntp2, ntp3
 final_estimates = merge([coef(fpm) for fpm in [pkfit, sdmafit, pltfit]]...);
 

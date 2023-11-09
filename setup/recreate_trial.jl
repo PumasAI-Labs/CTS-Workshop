@@ -2,7 +2,7 @@
 # Load Packages
 ##################################################################
 using Pumas
-using DataFramesMeta, Serialization
+using DataFramesMeta, CSV, Serialization
 
 ##################################################################
 # Trial Reference
@@ -106,13 +106,13 @@ function get_full_schedule(ncycles)
 
         if cycle == 1
             d1 = serial_times
-            d8 = predose .+ (24*8)
-            d15 = serial_times .+ (24*15)
-            d22 = predose .+ (24*22)
+            d8 = predose .+ (24*7)
+            d15 = serial_times .+ (24*14)
+            d22 = predose .+ (24*21)
             [d1; d8; d15; d22]
         else
-            d1 = predose .+ ((((cycle-1)*28)+1)*24)
-            d15 = predose .+ ((((cycle-1)*28)+16)*24)
+            d1 = predose .+ (((cycle-1)*28)*24)
+            d15 = predose .+ ((((cycle-1)*28)+14)*24)
             [d1; d15]
         end
         
@@ -158,12 +158,12 @@ function get_pruned_schedule(ncycles, ii)
 
         if cycle == 1
             d1 = pk_times
-            d8 = predose .+ (24*8)
-            d15 = pk_times .+ (24*15)
-            d22 = predose .+ (24*22)
+            d8 = predose .+ (24*7)
+            d15 = pk_times .+ (24*14)
+            d22 = predose .+ (24*21)
             [d1; d8; d15; d22]
         else
-            d1 = predose .+ ((((cycle-1)*28)+1)*24)
+            d1 = predose .+ (((cycle-1)*28)*24)
         end
 
     end
@@ -174,12 +174,12 @@ function get_pruned_schedule(ncycles, ii)
 
         if cycle == 1
             d1 = sdma_times
-            d8 = predose .+ (24*8)
-            d15 = sdma_times .+ (24*15)
-            d22 = predose .+ (24*22)
+            d8 = predose .+ (24*7)
+            d15 = sdma_times .+ (24*14)
+            d22 = predose .+ (24*21)
             [d1; d8; d15; d22]
         else
-            d1 = predose .+ ((((cycle-1)*28)+1)*24)
+            d1 = predose .+ (((cycle-1)*28)*24)
         end
 
     end
@@ -190,13 +190,13 @@ function get_pruned_schedule(ncycles, ii)
 
         if cycle == 1
             d1 = predose
-            d8 = predose .+ (24*8)
-            d15 = predose .+ (24*15)
-            d22 = predose .+ (24*22)
+            d8 = predose .+ (24*7)
+            d15 = predose .+ (24*14)
+            d22 = predose .+ (24*21)
             [d1; d8; d15; d22]
         else
-            d1 = predose .+ ((((cycle-1)*28)+1)*24)
-            d15 = predose .+ ((((cycle-1)*28)+16)*24)
+            d1 = predose .+ (((cycle-1)*28)*24)
+            d15 = predose .+ ((((cycle-1)*28)+14)*24)
             [d1; d15]
         end
 
@@ -257,5 +257,6 @@ filter!(df -> !(df.evid == 0 && all(ismissing, df[Cols(:dv, :sdma, :plt)])), myd
 # a word of warning about using .jls and serialization
 @chain mydf begin
     select(:id, :evid, :time, :amt, :cmt, :dv, :sdma, :plt, :tdd, :freqn)
-    serialize("data/trial_data.jls", _)
+    #serialize("data/trial_data.jls", _)
+    CSV.write("data/trial_data.csv", _)
 end
