@@ -64,7 +64,7 @@ ADJ6MG = (
 ##################################################################
 @info "Load Simulation Functions"
 # load simulation functions
-include("./utils/sim_functions.jl")
+@everywhere include("./utils/sim_functions.jl")
 
 
 ##################################################################
@@ -73,6 +73,9 @@ include("./utils/sim_functions.jl")
 @info "Load Simulation Dataset"
 # Set number of subjects to simulate in each scenario
 subjects_to_sim = 500;
+
+# Set number of cycles
+ncycles = 3;
 
 # empty dataframe to sim info and results
 mysims = DataFrame();
@@ -114,7 +117,7 @@ end;
 mysims[!, :sims] = pmap(eachrow(mysims)) do r
     map(eachrow(r.patients)) do subr
         try
-            return sim_trial(subr, 3);
+            return sim_trial(subr, ncycles);
         catch e
             return e
         end
@@ -126,5 +129,5 @@ end;
 ##################################################################
 @info "Serialize Results"
 open(result_filename, "w") do io
-    serialize(io, sims_df)
+    serialize(io, mysims)
 end

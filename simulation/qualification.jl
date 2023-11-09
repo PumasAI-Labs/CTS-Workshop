@@ -132,7 +132,7 @@ coreqpc = map(zip(inspectdfs, coreparams)) do (idf, param)
         plt = plot_qpc(refq50, q5, q50, q95, refvalue, "50th Percentile for "*uppercase(string(p)))
 
         try
-            save(joinpath("results",OUTDIR,string(param)*"_qpc.png"), plt)
+            save(joinpath("results",OUTDIR,string(p)*"_qpc.png"), plt)
         catch e
             @info "Could not save $(string(p)) QPC plot"
         end
@@ -183,9 +183,9 @@ derivedqpc = map(zip(inspectdfs, observedvals)) do (idf, val)
         plt = plot_qpc(refq50, q5, q50, q95, refvalue, "50th Percentile for "*uppercase(string(v)))
 
         try
-            save(joinpath("results",OUTDIR,string(val)*"_qpc.png"), plt)
+            save(joinpath("results",OUTDIR,string(v)*"_qpc.png"), plt)
         catch e
-            @info "Could not save $(string(val)) QPC plot"
+            @info "Could not save $(string(v)) QPC plot"
         end
 
         return plt
