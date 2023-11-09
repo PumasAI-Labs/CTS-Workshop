@@ -493,7 +493,7 @@ CSV.write(joinpath("results",OUTDIR, "sdma_target_by_scenario.csv"), finaltbl)
     transform([:npatients,:N] => ByRow((np,n) -> "$(round(100*(np/n), digits =1))% ($np/$n)") => :pct)
     select(:runlabel, :cyclesatgoal, :pct)
     unstack(_, :runlabel, :pct)
-    @aside CSV.write(joinpath(OUTDIR,"cycles_at_goal.csv"), _)
+    @aside CSV.write(joinpath("results",OUTDIR,"cycles_at_goal.csv"), _)
     println
 end
 
