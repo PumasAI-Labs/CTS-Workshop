@@ -292,7 +292,7 @@ function plot_cit_distribution(plotdata, obs, aegrade)
         titlealign = :left
     )
 
-    rainclouds!(a, string.(plotdf.runlabel), plotdf[!, obs]; color = colors[levelcode.(plotdf.runlabel)])
+    rainclouds!(a, string.(plotdf.runlabel), plotdf[!, obs]; color = colors[levelcode.(plotdf.runlabel)], clouds = nothing, markersize =4)
 
     return f
 
