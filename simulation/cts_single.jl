@@ -37,7 +37,7 @@ combined_pkpd = include("template/models/combined_pkpd.jl");
 ##################################################################
 # load simulation functions
 include("template/utils/sim_functions.jl")
-final_estimates = Tables.rowtable(CSV.read(joinpath(@__DIR__, "final_estimates.csv"), DataFrame))[begin];
+final_estimates = Tables.rowtable(CSV.read(joinpath(@__DIR__, "template/final_estimates.csv"), DataFrame))[begin];
 ##################################################################
 #* Single Test Patient
 ##################################################################
