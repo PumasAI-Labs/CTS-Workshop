@@ -36,8 +36,8 @@ combined_pkpd = include("template/models/combined_pkpd.jl");
 #* Load Simulation Functions and Data
 ##################################################################
 # load simulation functions
-include("template/sim_functions.jl")
-
+include("template/utils/sim_functions.jl")
+final_estimates = Tables.rowtable(CSV.read(joinpath(@__DIR__, "template/final_estimates.csv"), DataFrame))[begin];
 ##################################################################
 #* Single Test Patient
 ##################################################################
@@ -48,6 +48,7 @@ single_pt_df = DataFrame(id = 1);
 # dataframe must contain models, scenario, and baseline covariates
 single_pt_df[!, :models] .= Ref((; combined_pkpd)); #* Need Ref to prevent DataFrames.jl from expanding the ntp
 single_pt_df[!, :scenario] .= Ref(ADJ6MG); #* same reason as above
+single_pt_df[!, :params] .= Ref(final_estimates) #* same reason as above
 
 # sim 3 cycles for a single patient
 single_pt = sim_trial(single_pt_df[1,:], 3);
